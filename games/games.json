@@ -1,0 +1,86 @@
+[
+  {
+    "id": 1,
+    "title": "Jumble",
+    "game_url": "jumble/index.html",
+    "poster_url": "jumble/assets/android-chrome-512x512.png",
+    "banner_ad_on_top": false
+  },
+  {
+    "id": 2,
+    "title": "2048",
+    "game_url": "2048/index.html",
+    "poster_url": "2048/assets/android-chrome-512x512.png",
+    "banner_ad_on_top": false
+  },
+  {
+    "id": 3,
+    "title": "Android Wars",
+    "game_url": "android-wars/index.html",
+    "poster_url": "android-wars/assets/android-chrome-512x512.png",
+    "banner_ad_on_top": true
+  },
+  {
+    "id": 4,
+    "title": "Pixel Python",
+    "game_url": "pixel-python/index.html",
+    "poster_url": "pixel-python/assets/android-chrome-512x512.png",
+    "banner_ad_on_top": false
+  },
+  {
+    "id": 5,
+    "title": "Comet Sweeper",
+    "game_url": "comet-sweeper/index.html",
+    "poster_url": "comet-sweeper/assets/android-chrome-512x512.png",
+    "banner_ad_on_top": false
+  },
+  {
+    "id": 6,
+    "title": "Neon Tower",
+    "game_url": "neon-tower/index.html",
+    "poster_url": "neon-tower/assets/android-chrome-512x512.png",
+    "banner_ad_on_top": false
+  },
+  {
+    "id": 7,
+    "title": "Astro Pin",
+    "game_url": "astro-pin/index.html",
+    "poster_url": "astro-pin/assets/android-chrome-512x512.png",
+    "banner_ad_on_top": false
+  },
+  {
+    "id": 8,
+    "title": "Color Shift",
+    "game_url": "color-shift/index.html",
+    "poster_url": "color-shift/assets/android-chrome-512x512.png",
+    "banner_ad_on_top": false
+  },
+  {
+    "id": 9,
+    "title": "Gravity Dash",
+    "game_url": "gravity-dash/index.html",
+    "poster_url": "gravity-dash/assets/android-chrome-512x512.png",
+    "banner_ad_on_top": false
+  },
+  {
+    "id": 10,
+    "title": "Orbit Match",
+    "game_url": "orbit-match/index.html",
+    "poster_url": "orbit-match/assets/android-chrome-512x512.png",
+    "banner_ad_on_top": false
+  },
+  {
+    "id": 11,
+    "title": "Nebula Navigator",
+    "game_url": "nebula-navigator/index.html",
+    "poster_url": "nebula-navigator/assets/android-chrome-512x512.png",
+    "banner_ad_on_top": false
+  },
+  {
+    "id": 12,
+    "title": "Orbit Leap",
+    "game_url": "orbit-leap/index.html",
+    "poster_url": "orbit-leap/assets/android-chrome-512x512.png",
+    "banner_ad_on_top": false
+  }
+]

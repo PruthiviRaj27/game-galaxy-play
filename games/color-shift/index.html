@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Color Shift — Game Galaxy</title>
+
+    <!-- Standard favicon -->
+    <link rel="shortcut icon" href="assets/favicon.ico" type="image/x-icon">
+
+    <!-- PNG favicons for modern browsers -->
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+
+    <!-- Android / Chrome icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/android-chrome-512x512.png">
+
+    <!-- Apple Touch Icon (iOS home screen) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Michroma&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Michroma', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050014;
+            overscroll-behavior-y: none;
+            touch-action: none;
+        }
+
+        #game-container {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #score-display {
+            position: absolute;
+            top: 10%;
+            font-size: 6rem;
+            font-weight: 700;
+            line-height: 1;
+            color: rgba(255, 255, 255, 0.5);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+            transition: transform 0.1s, color 0.1s;
+            font-family: 'Syncopate', sans-serif;
+            z-index: 5;
+        }
+
+        #score-display.bump {
+            transform: scale(1.3);
+            color: rgba(255, 255, 255, 1);
+        }
+
+        .panel {
+            background: rgba(5, 0, 20, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 12px;
+            border: 2px solid rgba(255, 0, 204, 0.3);
+            padding: 35px 25px;
+            text-align: center;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(0, 255, 255, 0.1);
+            max-width: 85%;
+            width: 330px;
+            z-index: 20;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .panel h1 {
+            font-size: 3rem;
+            color: #fff;
+            line-height: 1.1;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            font-family: 'Syncopate', sans-serif;
+            font-weight: 700;
+        }
+
+        .panel h1 span {
+            color: #ff00cc;
+            text-shadow: 0 0 15px rgba(255, 0, 204, 0.8);
+        }
+
+        .panel p {
+            color: #b0c4de;
+            font-size: 1rem;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .color-preview {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px 30px;
+            border-radius: 50px;
+        }
+
+        .color-preview span {
+            color: #fff;
+            font-size: 1.5rem;
+        }
+
+        .prev-orb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+        .prev-orb.pink {
+            background: #ff00cc;
+            box-shadow: 0 0 10px #ff00cc;
+        }
+        .prev-orb.cyan {
+            background: #00ffff;
+            box-shadow: 0 0 10px #00ffff;
+        }
+
+        .panel h2 {
+            font-size: 2.2rem;
+            color: #ff00cc;
+            margin-bottom: 25px;
+            text-shadow: 0 0 15px rgba(255, 0, 204, 0.6);
+            line-height: 1.2;
+            font-family: 'Syncopate', sans-serif;
+        }
+
+        .scores {
+            margin-bottom: 30px;
+            width: 100%;
+        }
+
+        .scores p {
+            font-size: 1.1rem;
+            color: #88a;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            letter-spacing: 1px;
+        }
+
+        .scores span {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .scores span#best-score {
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #ff00cc, #9d00ff);
+            border: none;
+            padding: 16px 0;
+            width: 100%;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(255, 0, 204, 0.4);
+            transition: transform 0.1s, box-shadow 0.1s;
+            outline: none;
+            letter-spacing: 3px;
+            font-family: 'Syncopate', sans-serif;
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+            box-shadow: 0 2px 10px rgba(255, 0, 204, 0.4);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer">
+            <div id="score-display" class="hidden">0</div>
+            
+            <div id="main-menu" class="panel">
+                <h1>COLOR<br><span>SHIFT</span></h1>
+                <p>Tap ANYWHERE to flip your color.<br>Match the gate color to smash through it!</p>
+                <div class="color-preview">
+                    <div class="prev-orb pink"></div>
+                    <span>↔</span>
+                    <div class="prev-orb cyan"></div>
+                </div>
+                <button id="start-btn" class="btn">ACCELERATE</button>
+            </div>
+            
+            <div id="game-over" class="panel hidden">
+                <h2>CRASHED</h2>
+                <div class="scores">
+                    <p>SCORE: <span id="final-score">0</span></p>
+                    <p>BEST: <span id="best-score">0</span></p>
+                </div>
+                <button id="retry-btn" class="btn">RESUME</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const uiScore = document.getElementById('score-display');
+        const mainMenu = document.getElementById('main-menu');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreEl = document.getElementById('final-score');
+        const bestScoreEl = document.getElementById('best-score');
+        const startBtn = document.getElementById('start-btn');
+        const retryBtn = document.getElementById('retry-btn');
+
+        let w, h;
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            w = window.innerWidth;
+            h = window.innerHeight;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            ctx.scale(dpr, dpr);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const STATE_MENU = 0;
+        const STATE_PLAYING = 1;
+        const STATE_GAMEOVER = 2;
+
+        let state = STATE_MENU;
+        let bestScore = parseInt(localStorage.getItem('colorShiftBestScore') || 0);
+
+        const COLORS = ['#ff00cc', '#00ffff']; // Pink, Cyan
+
+        let score = 0;
+        let speed = 360; // Pixels per second
+        let gateThickness = 25;
+        let spawnTimer = 0;
+        let distanceBetweenGates = 0; 
+
+        let player = {
+            x: 0,
+            y: 0,
+            r: 22,
+            colorIndex: 0
+        };
+
+        let gates = [];
+        let particles = [];
+        let stars = [];
+
+        function initLevel() {
+            w = window.innerWidth;
+            h = window.innerHeight;
+            player.x = w / 2;
+            player.y = h * 0.75;
+            player.r = Math.min(22, w * 0.05);
+            player.colorIndex = 0;
+            
+            score = 0;
+            speed = 360 + (h > 800 ? 120 : 0);
+            distanceBetweenGates = h * 0.45;
+            gates = [];
+            particles = [];
+            
+            spawnGate();
+            spawnTimer = distanceBetweenGates / speed;
+            
+            uiScore.innerText = score;
+        }
+
+        function spawnGate() {
+            let colorId = Math.random() > 0.5 ? 1 : 0;
+            gates.push({
+                y: -gateThickness,
+                h: gateThickness,
+                colorIndex: colorId,
+                color: COLORS[colorId],
+                passed: false
+            });
+        }
+
+        function showMenu() {
+            state = STATE_MENU;
+            uiScore.classList.add('hidden');
+            mainMenu.classList.remove('hidden');
+            gameOverScreen.classList.add('hidden');
+            initLevel();
+        }
+
+        function initGame() {
+            initLevel();
+            state = STATE_PLAYING;
+            updateUI(true);
+        }
+
+        function updateUI(playing) {
+            if (playing) {
+                uiScore.classList.remove('hidden');
+                mainMenu.classList.add('hidden');
+                gameOverScreen.classList.add('hidden');
+            } else {
+                uiScore.classList.add('hidden');
+                gameOverScreen.classList.remove('hidden');
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    localStorage.setItem('colorShiftBestScore', bestScore);
+                }
+                finalScoreEl.innerText = score;
+                bestScoreEl.innerText = bestScore;
+            }
+        }
+
+        function handleGameOver() {
+            state = STATE_GAMEOVER;
+            updateUI(false);
+            if (navigator.vibrate) navigator.vibrate([150, 50, 150]);
+            createExplosion(player.x, player.y, COLORS[player.colorIndex], 40, 1);
+        }
+
+        function shiftColor() {
+            if (state === STATE_PLAYING) {
+                player.colorIndex = 1 - player.colorIndex;
+                createExplosion(player.x, player.y, COLORS[player.colorIndex], 6, 0.3);
+                if (navigator.vibrate) navigator.vibrate(10);
+            }
+        }
+
+        function onInput(e) {
+            if (state === STATE_MENU) return;
+            if (e.type === 'touchstart') e.preventDefault();
+            shiftColor();
+        }
+
+        canvas.addEventListener('mousedown', onInput);
+        canvas.addEventListener('touchstart', onInput, {passive: false});
+        window.addEventListener('keydown', (e) => {
+            if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) {
+                e.preventDefault();
+                onInput(e);
+            }
+        });
+
+        startBtn.addEventListener('click', initGame);
+        retryBtn.addEventListener('click', () => {
+            if (window.Android && window.Android.showAd) {
+                window.Android.showAd();
+            } else {
+                window.restartGame();
+            }
+        });
+
+        window.restartGame = function() {
+            showMenu();
+        };
+
+        function createExplosion(x, y, color, count, speedMult = 1) {
+            for (let i = 0; i < count; i++) {
+                const velAngle = Math.random() * Math.PI * 2;
+                const velMag = (Math.random() * 480 + 120) * speedMult;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(velAngle) * velMag,
+                    vy: Math.sin(velAngle) * velMag,
+                    life: 1,
+                    color: color,
+                    size: Math.random() * 5 + 2
+                });
+            }
+        }
+
+        function update(dt) {
+            w = window.innerWidth;
+            h = window.innerHeight;
+            
+            for (let s of stars) {
+                s.y += (s.speed + (state === STATE_PLAYING ? speed * 0.5 : 0)) * dt;
+                if (s.y > h) {
+                    s.y = 0;
+                    s.x = Math.random() * w;
+                }
+            }
+
+            if (state === STATE_PLAYING) {
+                spawnTimer -= dt;
+                if (spawnTimer <= 0) {
+                    spawnGate();
+                    spawnTimer = distanceBetweenGates / speed;
+                    speed += 4.8; 
+                }
+                
+                for (let i = gates.length - 1; i >= 0; i--) {
+                    let g = gates[i];
+                    g.y += speed * dt;
+                    
+                    if (!g.passed) {
+                        if (player.y - player.r < g.y + g.h && player.y + player.r > g.y) {
+                            if (g.colorIndex === player.colorIndex) {
+                                g.passed = true;
+                                score++;
+                                uiScore.innerText = score;
+                                uiScore.classList.add('bump');
+                                setTimeout(() => uiScore.classList.remove('bump'), 100);
+                                
+                                for (let p = 0; p < w; p += (w / 8)) {
+                                    createExplosion(p, g.y + g.h/2, g.color, 3, 0.2);
+                                }
+                                gates.splice(i, 1);
+                                continue;
+                            } else {
+                                handleGameOver();
+                            }
+                        }
+                    }
+                    if (g.y > h + 100) gates.splice(i, 1);
+                }
+            }
+            
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx * dt;
+                p.y += (p.vy + (state === STATE_PLAYING ? speed * 0.4 : 0)) * dt; 
+                p.life -= 1.8 * dt;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, w, h);
+            
+            for (let s of stars) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${s.s * 0.2})`;
+                ctx.fillRect(s.x, s.y, s.s * 2, s.s * 2); 
+            }
+            
+            for (let g of gates) {
+                ctx.globalAlpha = 0.3;
+                ctx.fillStyle = g.color;
+                ctx.fillRect(0, g.y - 15, w, g.h + 30);
+                ctx.globalAlpha = 1.0;
+                ctx.fillRect(0, g.y, w, g.h);
+                ctx.fillStyle = '#ffffff';
+                ctx.globalAlpha = 0.5;
+                ctx.fillRect(0, g.y + g.h * 0.3, w, g.h * 0.4);
+                ctx.globalAlpha = 1.0;
+            }
+            
+            for (let p of particles) {
+                ctx.globalAlpha = Math.max(0, p.life);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x - p.size, p.y - p.size, p.size * 2, p.size * 2); 
+            }
+            ctx.globalAlpha = 1;
+            
+            if (state !== STATE_GAMEOVER) {
+                let pCol = COLORS[player.colorIndex];
+                ctx.globalAlpha = 0.3;
+                ctx.fillStyle = pCol;
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, player.r * 1.8, 0, Math.PI*2);
+                ctx.fill();
+                ctx.globalAlpha = 0.6;
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, player.r * 1.3, 0, Math.PI*2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, player.r, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, player.r * 0.6, 0, Math.PI*2);
+                ctx.fill();
+            }
+            
+            if (state === STATE_GAMEOVER) {
+                ctx.fillStyle = 'rgba(255, 0, 50, 0.15)';
+                ctx.fillRect(0,0, w, h);
+            }
+        }
+
+        let lastTimeLoop = 0;
+        function gameLoop(timestamp) {
+            if (!lastTimeLoop) lastTimeLoop = timestamp;
+            const dt = (timestamp - lastTimeLoop) / 1000;
+            lastTimeLoop = timestamp;
+            update(dt > 0.1 ? 0.1 : dt);
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function initStars() {
+            stars = [];
+            for(let i=0; i<50; i++) {
+                stars.push({
+                    x: Math.random() * window.innerWidth,
+                    y: Math.random() * window.innerHeight,
+                    s: Math.random() * 2 + 0.5,
+                    speed: Math.random() * 120 + 60
+                });
+            }
+        }
+
+        initStars();
+        requestAnimationFrame(gameLoop);
+        state = STATE_MENU;
+        updateUI(false);
+        mainMenu.classList.remove('hidden');
+        gameOverScreen.classList.add('hidden');
+
+    </script>
+</body>
+</html>

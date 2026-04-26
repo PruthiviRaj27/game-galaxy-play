@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Comet Sweeper — Game Galaxy</title>
+
+    <!-- Standard favicon -->
+    <link rel="shortcut icon" href="assets/favicon.ico" type="image/x-icon">
+
+    <!-- PNG favicons for modern browsers -->
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+
+    <!-- Android / Chrome icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/android-chrome-512x512.png">
+
+    <!-- Apple Touch Icon (iOS home screen) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+
+    <style>
+        :root {
+            --bg-space: #020617;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent: #38bdf8;
+            --danger: #ef4444;
+            --text: #f1f5f9;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 1. Reset root to fill the viewport exactly */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-space);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        #bg-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 1; /* Background layer */
+        }
+
+        /* 2. THE FIX: A fixed wrapper that handles centering */
+        #ui-layer {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10; /* Above the canvas */
+            padding: 20px;
+        }
+
+        .game-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 20px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: linear-gradient(to right, #fff, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stats {
+            display: flex;
+            gap: 15px;
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: var(--accent);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px;
+            border-radius: 12px;
+            aspect-ratio: 1/1;
+            width: 100%;
+        }
+
+        .cell {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            border: 1px solid transparent;
+            aspect-ratio: 1/1;
+        }
+
+        .cell.hidden {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .cell.revealed {
+            background: rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.02);
+            cursor: default;
+        }
+
+        .cell.comet {
+            background: var(--danger);
+            color: white;
+            box-shadow: 0 0 15px var(--danger);
+        }
+
+        .cell.flagged::after {
+            content: '🚩';
+            font-size: 0.7rem;
+        }
+
+        .cell[data-count="1"] { color: #3b82f6; }
+        .cell[data-count="2"] { color: #10b981; }
+        .cell[data-count="3"] { color: #ef4444; }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 5px;
+            border-radius: 10px;
+            border: none;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            transition: all 0.2s;
+        }
+
+        .btn-mode {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            color: var(--text);
+        }
+
+        .btn-mode.active {
+            background: var(--accent);
+            color: var(--bg-space);
+            border-color: var(--accent);
+        }
+
+        .btn-reset {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .overlay.active { display: flex; }
+    </style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+
+<div id="ui-layer">
+    <div class="game-panel">
+        <div class="header">
+            <h1 class="title">Comet Sweeper</h1>
+            <div class="stats">
+                <span id="flag-count">015</span>
+                <span id="timer">000</span>
+            </div>
+        </div>
+
+        <div id="grid" class="grid"></div>
+
+        <div class="controls">
+            <button id="mode-reveal" class="btn btn-mode active">Reveal</button>
+            <button id="mode-flag" class="btn btn-mode">Flag</button>
+            <button onclick="initGame()" class="btn btn-reset">Reset</button>
+        </div>
+    </div>
+</div>
+
+<div id="status-overlay" class="overlay">
+    <h2 id="status-title">FIELD CLEAR!</h2>
+    <p id="status-desc">All comets tagged. Sector safe.</p>
+    <button onclick="handleRetry()" style="background: var(--accent); padding: 12px 30px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer;">Restart</button>
+</div>
+
+<script>
+    // Space Background
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    let stars = [];
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        stars = [];
+        for(let i=0; i<100; i++) stars.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, s: Math.random()*2});
+    }
+
+    function draw() {
+        ctx.fillStyle = '#020617';
+        ctx.fillRect(0,0,canvas.width, canvas.height);
+        ctx.fillStyle = '#fff';
+        stars.forEach(s => {
+            ctx.globalAlpha = 0.4 + Math.random()*0.4;
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, Math.PI*2); ctx.fill();
+        });
+        requestAnimationFrame(draw);
+    }
+    window.addEventListener('resize', resize);
+    resize(); draw();
+
+    // Game Logic
+    const ROWS = 10, COLS = 10, COMETS = 15;
+    let board = [], revealed = [], flagged = [];
+    let gameOver = false, isFlagMode = false;
+    let time = 0, timerInterval;
+
+    const gridEl = document.getElementById('grid');
+    const flagEl = document.getElementById('flag-count');
+    const timeEl = document.getElementById('timer');
+    const overlay = document.getElementById('status-overlay');
+
+    function initGame() {
+        gameOver = false;
+        time = 0;
+        clearInterval(timerInterval);
+        timeEl.textContent = "000";
+        overlay.classList.remove('active');
+        board = Array(ROWS * COLS).fill(0);
+        revealed = Array(ROWS * COLS).fill(false);
+        flagged = Array(ROWS * COLS).fill(false);
+
+        let placed = 0;
+        while(placed < COMETS) {
+            let idx = Math.floor(Math.random() * (ROWS * COLS));
+            if(board[idx] !== -1) { board[idx] = -1; placed++; }
+        }
+
+        for(let i=0; i<ROWS*COLS; i++) {
+            if(board[i] === -1) continue;
+            let count = 0;
+            getNeighbors(i).forEach(n => { if(board[n] === -1) count++; });
+            board[i] = count;
+        }
+        render();
+        updateStats();
+    }
+
+    function getNeighbors(idx) {
+        let r = Math.floor(idx / COLS), c = idx % COLS;
+        let ns = [];
+        for(let dr=-1; dr<=1; dr++) {
+            for(let dc=-1; dc<=1; dc++) {
+                if(dr === 0 && dc === 0) continue;
+                let nr = r + dr, nc = c + dc;
+                if(nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) ns.push(nr * COLS + nc);
+            }
+        }
+        return ns;
+    }
+
+    function render() {
+        gridEl.innerHTML = '';
+        for(let i=0; i<ROWS*COLS; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            if(revealed[i]) {
+                cell.classList.add('revealed');
+                if(board[i] === -1) {
+                    cell.classList.add('comet');
+                    cell.textContent = '☄️';
+                } else if(board[i] > 0) {
+                    cell.textContent = board[i];
+                    cell.dataset.count = board[i];
+                }
+            } else {
+                cell.classList.add('hidden');
+                if(flagged[i]) cell.classList.add('flagged');
+            }
+            cell.onclick = () => handleCellClick(i);
+            cell.oncontextmenu = (e) => { e.preventDefault(); toggleFlag(i); };
+            gridEl.appendChild(cell);
+        }
+    }
+
+    function handleCellClick(i) {
+        if(gameOver || flagged[i]) return;
+        if(time === 0) startTimer();
+        if(isFlagMode) { toggleFlag(i); return; }
+        if(board[i] === -1) { endGame(false); return; }
+        reveal(i); render(); checkWin();
+    }
+
+    function reveal(i) {
+        if(revealed[i] || flagged[i]) return;
+        revealed[i] = true;
+        if(board[i] === 0) getNeighbors(i).forEach(n => reveal(n));
+    }
+
+    function toggleFlag(i) {
+        if(gameOver || revealed[i]) return;
+        flagged[i] = !flagged[i];
+        updateStats(); render();
+    }
+
+    function startTimer() {
+        timerInterval = setInterval(() => {
+            time++;
+            timeEl.textContent = time.toString().padStart(3, '0');
+        }, 1000);
+    }
+
+    function updateStats() {
+        let count = flagged.filter(f => f).length;
+        flagEl.textContent = (COMETS - count).toString().padStart(3, '0');
+    }
+
+    function checkWin() {
+        let win = true;
+        for(let i=0; i<ROWS*COLS; i++) { if(board[i] !== -1 && !revealed[i]) win = false; }
+        if(win) endGame(true);
+    }
+
+    function endGame(won) {
+        gameOver = true;
+        clearInterval(timerInterval);
+        if(!won) revealed = Array(ROWS * COLS).fill(true);
+        render();
+        setTimeout(() => {
+            document.getElementById('status-title').textContent = won ? "FIELD CLEAR!" : "CRITICAL IMPACT!";
+            document.getElementById('status-desc').textContent = won ? `Sector safe. Time: ${time}s` : "Vessel damaged by comet strike.";
+            overlay.classList.add('active');
+        }, 500);
+    }
+
+    // Global callback for Android to restart the game
+    window.restartGame = function() {
+      initGame();
+    };
+
+    function handleRetry() {
+        if (window.Android && window.Android.showAd) {
+            window.Android.showAd();
+        } else {
+            initGame();
+        }
+    }
+
+    document.getElementById('mode-reveal').onclick = () => {
+        isFlagMode = false;
+        document.getElementById('mode-reveal').classList.add('active');
+        document.getElementById('mode-flag').classList.remove('active');
+    };
+    document.getElementById('mode-flag').onclick = () => {
+        isFlagMode = true;
+        document.getElementById('mode-flag').classList.add('active');
+        document.getElementById('mode-reveal').classList.remove('active');
+    };
+
+    initGame();
+</script>
+</body>
+</html>
