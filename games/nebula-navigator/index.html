@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Nebula Navigator — Game Galaxy</title>
+
+    <!-- Standard favicon -->
+    <link rel="shortcut icon" href="assets/favicon.ico" type="image/x-icon">
+
+    <!-- PNG favicons for modern browsers -->
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+
+    <!-- Android / Chrome icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/android-chrome-512x512.png">
+
+    <!-- Apple Touch Icon (iOS home screen) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Exo 2', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050110;
+            overscroll-behavior-y: none;
+            touch-action: none;
+        }
+
+        #game-container {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #score-display {
+            position: absolute;
+            top: 5%;
+            font-size: 3.5rem;
+            font-weight: 900;
+            color: #00f2ff;
+            text-shadow: 0 0 15px rgba(0, 242, 255, 0.6);
+            transition: transform 0.1s;
+            z-index: 5;
+            letter-spacing: 2px;
+        }
+
+        #score-display.bump {
+            transform: scale(1.2);
+            color: #fff;
+        }
+
+        .panel {
+            background: rgba(10, 5, 30, 0.85);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 2px solid #7000ff;
+            border-radius: 24px;
+            padding: 40px 30px;
+            text-align: center;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 0 40px rgba(112, 0, 255, 0.3), inset 0 0 20px rgba(112, 0, 255, 0.1);
+            max-width: 85%;
+            width: 320px;
+            z-index: 20;
+            animation: slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .panel h1 {
+            font-size: 2.2rem;
+            font-weight: 900;
+            color: #fff;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .panel h1 span {
+            color: #00f2ff;
+            text-shadow: 0 0 15px rgba(0, 242, 255, 0.8);
+        }
+
+        .panel p {
+            color: #b8b0e0;
+            font-size: 1rem;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        .panel h2 {
+            font-size: 2rem;
+            color: #ff007b;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(255, 0, 123, 0.5);
+        }
+
+        .scores {
+            margin-bottom: 30px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 15px 25px;
+            width: 100%;
+        }
+
+        .scores p {
+            font-size: 1.1rem;
+            color: #8c84b0;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .scores p:last-child { margin-bottom: 0; }
+
+        .scores span {
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .scores span#best-score {
+            color: #00f2ff;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #7000ff, #00f2ff);
+            border: none;
+            padding: 15px 0;
+            width: 100%;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(112, 0, 255, 0.4);
+            transition: transform 0.1s, box-shadow 0.1s;
+            outline: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+            box-shadow: 0 4px 10px rgba(112, 0, 255, 0.4);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer">
+            <div id="score-display" class="hidden">0</div>
+            
+            <div id="main-menu" class="panel">
+                <h1>NEBULA<br><span>NAVIGATOR</span></h1>
+                <p>Tap to change direction.<br>Stay within the nebula walls and dodge obstacles!</p>
+                <button id="start-btn" class="btn">ENGINE START</button>
+            </div>
+            
+            <div id="game-over" class="panel hidden">
+                <h2>NAV-LINK LOST</h2>
+                <div class="scores">
+                    <p>DISTANCE <span id="final-score">0</span></p>
+                    <p>RECORD <span id="best-score">0</span></p>
+                </div>
+                <button id="retry-btn" class="btn">RECONNECT</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const uiScore = document.getElementById('score-display');
+        const mainMenu = document.getElementById('main-menu');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreEl = document.getElementById('final-score');
+        const bestScoreEl = document.getElementById('best-score');
+        const startBtn = document.getElementById('start-btn');
+        const retryBtn = document.getElementById('retry-btn');
+
+        let w, h;
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            w = window.innerWidth;
+            h = window.innerHeight;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            ctx.scale(dpr, dpr);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const STATE_MENU = 0;
+        const STATE_PLAYING = 1;
+        const STATE_GAMEOVER = 2;
+
+        let state = STATE_MENU;
+        let bestScore = parseInt(localStorage.getItem('nebulaNavigatorBestScore') || 0);
+        let score = 0;
+
+        let player = {
+            x: 0,
+            y: 0,
+            size: 20,
+            vx: 0,
+            dir: 1, // 1 = right, -1 = left
+            speedX: 220, // Reduced from 300
+            speedY: 140  // Reduced from 200
+        };
+
+        let path = [];
+        let particles = [];
+        let bgStars = [];
+        let frames = 0;
+
+        function initStars() {
+            bgStars = [];
+            for (let i = 0; i < 60; i++) {
+                bgStars.push({
+                    x: Math.random() * w,
+                    y: Math.random() * h,
+                    s: Math.random() * 2 + 0.5,
+                    speed: Math.random() * 50 + 20
+                });
+            }
+        }
+
+        function initLevel() {
+            w = window.innerWidth;
+            h = window.innerHeight;
+            
+            player.x = w / 2;
+            player.y = h * 0.7;
+            player.dir = 1;
+            player.vx = player.speedX;
+            
+            score = 0;
+            uiScore.innerText = score;
+            
+            particles = [];
+            path = [];
+            
+            // Initial path points
+            let pathWidth = w * 0.7; // Increased from 0.5
+            let currentX = w / 2;
+            for (let i = 0; i < 20; i++) {
+                path.push({
+                    x: currentX,
+                    y: h - (i * 100),
+                    w: pathWidth
+                });
+            }
+        }
+
+        function showMenu() {
+            state = STATE_MENU;
+            uiScore.classList.add('hidden');
+            mainMenu.classList.remove('hidden');
+            gameOverScreen.classList.add('hidden');
+            initLevel();
+        }
+
+        function initGame() {
+            initLevel();
+            state = STATE_PLAYING;
+            updateUI(true);
+        }
+
+        function updateUI(playing) {
+            if (playing) {
+                uiScore.classList.remove('hidden');
+                mainMenu.classList.add('hidden');
+                gameOverScreen.classList.add('hidden');
+            } else {
+                uiScore.classList.add('hidden');
+                gameOverScreen.classList.remove('hidden');
+                if (score > bestScore) {
+                    bestScore = score;
+                    localStorage.setItem('nebulaNavigatorBestScore', bestScore);
+                }
+                finalScoreEl.innerText = score;
+                bestScoreEl.innerText = bestScore;
+            }
+        }
+
+        function handleGameOver() {
+            state = STATE_GAMEOVER;
+            updateUI(false);
+            createExplosion(player.x, player.y, '#00f2ff', 30);
+            if (navigator.vibrate) navigator.vibrate([150, 50, 150]);
+        }
+
+        function flip() {
+            if (state === STATE_PLAYING) {
+                player.dir *= -1;
+                player.vx = player.speedX * player.dir;
+                if (navigator.vibrate) navigator.vibrate(10);
+            }
+        }
+
+        const inputHandler = (e) => {
+            if (state === STATE_MENU) return;
+            if (e.type === 'touchstart') e.preventDefault();
+            flip();
+        };
+
+        canvas.addEventListener('mousedown', inputHandler);
+        canvas.addEventListener('touchstart', inputHandler, {passive: false});
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+                inputHandler(e);
+            }
+        });
+
+        startBtn.addEventListener('click', initGame);
+        retryBtn.addEventListener('click', () => {
+            if (window.Android && window.Android.showAd) {
+                window.Android.showAd();
+            } else {
+                window.restartGame();
+            }
+        });
+
+        window.restartGame = function() {
+            showMenu();
+        };
+
+        function createExplosion(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const mag = Math.random() * 300 + 50;
+                particles.push({
+                    x, y,
+                    vx: Math.cos(angle) * mag,
+                    vy: Math.sin(angle) * mag,
+                    life: 1,
+                    color: color,
+                    size: Math.random() * 4 + 2
+                });
+            }
+        }
+
+        function update(dt) {
+            w = window.innerWidth;
+            h = window.innerHeight;
+
+            for (let s of bgStars) {
+                s.y += (s.speed + (state === STATE_PLAYING ? player.speedY : 0)) * dt;
+                if (s.y > h) {
+                    s.y = -10;
+                    s.x = Math.random() * w;
+                }
+            }
+
+            if (state === STATE_PLAYING) {
+                player.x += player.vx * dt;
+                
+                // Advance path
+                let scrollSpeed = player.speedY + (score * 1.5); // Slightly slower difficulty curve
+                for (let p of path) {
+                    p.y += scrollSpeed * dt;
+                }
+
+                // Remove old path points and add new ones
+                if (path[0].y > h + 100) {
+                    path.shift();
+                    score++;
+                    uiScore.innerText = score;
+                    if (score % 10 === 0) {
+                        uiScore.classList.add('bump');
+                        setTimeout(() => uiScore.classList.remove('bump'), 150);
+                    }
+                }
+
+                if (path[path.length - 1].y > -100) {
+                    let last = path[path.length - 1];
+                    let nextWidth = Math.max(w * 0.35, last.w * 0.999); // Wider minimum path
+                    let drift = (Math.random() - 0.5) * 50; // Less extreme wiggles
+                    let nextX = Math.max(nextWidth/2 + 20, Math.min(w - nextWidth/2 - 20, last.x + drift));
+                    path.push({
+                        x: nextX,
+                        y: last.y - 120, // More distance between nodes for smoother turns
+                        w: nextWidth
+                    });
+                }
+
+                // Check collision with path walls
+                let currentPath = null;
+                for (let i = 0; i < path.length - 1; i++) {
+                    if (player.y <= path[i].y && player.y >= path[i+1].y) {
+                        currentPath = path[i];
+                        break;
+                    }
+                }
+
+                if (currentPath) {
+                    if (player.x < currentPath.x - currentPath.w / 2 || 
+                        player.x > currentPath.x + currentPath.w / 2) {
+                        handleGameOver();
+                    }
+                }
+
+                // Trail particles
+                if (frames % 2 === 0) {
+                    particles.push({
+                        x: player.x,
+                        y: player.y + 10,
+                        vx: (Math.random() - 0.5) * 50,
+                        vy: Math.random() * 100 + 50,
+                        life: 1,
+                        color: '#7000ff',
+                        size: Math.random() * 3 + 1
+                    });
+                }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.life -= 1.5 * dt;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+            
+            frames++;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, w, h);
+
+            // Stars
+            for (let s of bgStars) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${s.s * 0.3})`;
+                ctx.fillRect(s.x, s.y, s.s, s.s);
+            }
+
+            // Draw Nebula Path
+            if (path.length > 1) {
+                ctx.beginPath();
+                ctx.strokeStyle = '#7000ff';
+                ctx.lineWidth = 4;
+                ctx.setLineDash([10, 10]);
+                
+                // Left Wall
+                ctx.moveTo(path[0].x - path[0].w / 2, path[0].y);
+                for (let i = 1; i < path.length; i++) {
+                    ctx.lineTo(path[i].x - path[i].w / 2, path[i].y);
+                }
+                ctx.stroke();
+
+                // Right Wall
+                ctx.beginPath();
+                ctx.moveTo(path[0].x + path[0].w / 2, path[0].y);
+                for (let i = 1; i < path.length; i++) {
+                    ctx.lineTo(path[i].x + path[i].w / 2, path[i].y);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Particles
+            for (let p of particles) {
+                ctx.globalAlpha = Math.max(0, p.life);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1.0;
+
+            // Player Ship
+            if (state !== STATE_GAMEOVER) {
+                ctx.save();
+                ctx.translate(player.x, player.y);
+                ctx.rotate(player.dir * 0.3); // Slight tilt
+
+                // Glow
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#00f2ff';
+                
+                // Body
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.moveTo(0, -15);
+                ctx.lineTo(-10, 10);
+                ctx.lineTo(10, 10);
+                ctx.closePath();
+                ctx.fill();
+
+                // Cockpit
+                ctx.fillStyle = '#00f2ff';
+                ctx.beginPath();
+                ctx.arc(0, 0, 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+
+            if (state === STATE_GAMEOVER) {
+                ctx.fillStyle = 'rgba(255, 0, 123, 0.15)';
+                ctx.fillRect(0, 0, w, h);
+            }
+        }
+
+        let lastTimeLoop = 0;
+        function gameLoop(timestamp) {
+            if (!lastTimeLoop) lastTimeLoop = timestamp;
+            const dt = (timestamp - lastTimeLoop) / 1000;
+            lastTimeLoop = timestamp;
+            update(dt > 0.1 ? 0.1 : dt);
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        initStars();
+        requestAnimationFrame(gameLoop);
+        showMenu();
+    </script>
+</body>
+</html>

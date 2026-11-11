@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Orbit Match — Game Galaxy</title>
+
+    <!-- Standard favicon -->
+    <link rel="shortcut icon" href="assets/favicon.ico" type="image/x-icon">
+
+    <!-- PNG favicons for modern browsers -->
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+
+    <!-- Android / Chrome icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/android-chrome-512x512.png">
+
+    <!-- Apple Touch Icon (iOS home screen) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0d0d12;
+            overscroll-behavior-y: none;
+            touch-action: none;
+        }
+
+        #game-container {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #score-display {
+            position: absolute;
+            top: 10%;
+            font-size: 4rem;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.85);
+            text-shadow: 0 0 15px rgba(255,255,255,0.4);
+            transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 10;
+        }
+
+        #score-display.bump {
+            transform: scale(1.3);
+            color: #fff;
+        }
+
+        .panel {
+            background: rgba(20, 20, 28, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 28px;
+            padding: 40px 30px;
+            text-align: center;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+            max-width: 90%;
+            width: 320px;
+            z-index: 20;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .panel h1 {
+            font-size: 2.8rem;
+            font-weight: 900;
+            color: #fff;
+            line-height: 1.05;
+            margin-bottom: 12px;
+            letter-spacing: 3px;
+        }
+
+        .panel h1 span {
+            color: #ff0055;
+            text-shadow: 0 0 25px rgba(255,0,85,0.7);
+        }
+
+        .panel p {
+            color: #a0a0ab;
+            font-size: 1.05rem;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .panel h2 {
+            font-size: 2.2rem;
+            color: #fff;
+            margin-bottom: 25px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 15px rgba(255,255,255,0.4);
+        }
+
+        .scores {
+            margin-bottom: 35px;
+            background: rgba(0,0,0,0.3);
+            padding: 15px 30px;
+            border-radius: 16px;
+            width: 100%;
+        }
+
+        .scores p {
+            font-size: 1.2rem;
+            color: #ccc;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .scores p:last-child {
+            margin-bottom: 0;
+        }
+
+        .scores span {
+            font-weight: 900;
+            color: #fff;
+            font-size: 1.4rem;
+        }
+
+        .scores span#best-score {
+            color: #00ffcc;
+            text-shadow: 0 0 10px rgba(0,255,204,0.5);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #ff0055, #ff00aa);
+            border: none;
+            padding: 16px 0;
+            width: 100%;
+            border-radius: 50px;
+            color: #fff;
+            font-size: 1.3rem;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(255, 0, 85, 0.5);
+            transition: transform 0.1s, box-shadow 0.1s;
+            outline: none;
+            letter-spacing: 1px;
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+            box-shadow: 0 5px 15px rgba(255, 0, 85, 0.4);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer">
+            <div id="score-display" class="hidden">0</div>
+            
+            <div id="main-menu" class="panel">
+                <h1>ORBIT<br><span>MATCH</span></h1>
+                <p>Tap anywhere to rotate by 90°. Catch the matching colors!</p>
+                <button id="start-btn" class="btn">PLAY NOW</button>
+            </div>
+            
+            <div id="game-over" class="panel hidden">
+                <h2>GAME OVER</h2>
+                <div class="scores">
+                    <p>Score: <span id="final-score">0</span></p>
+                    <p>Best: <span id="best-score">0</span></p>
+                </div>
+                <button id="retry-btn" class="btn">RETRY</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const uiScore = document.getElementById('score-display');
+        const mainMenu = document.getElementById('main-menu');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreEl = document.getElementById('final-score');
+        const bestScoreEl = document.getElementById('best-score');
+        const startBtn = document.getElementById('start-btn');
+        const retryBtn = document.getElementById('retry-btn');
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            ctx.scale(dpr, dpr);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const COLORS = ['#ff0055', '#00ffcc', '#ffdd00', '#aa00ff'];
+        const STATE_MENU = 0;
+        const STATE_PLAYING = 1;
+        const STATE_GAMEOVER = 2;
+
+        let state = STATE_MENU;
+        let bestScore = parseInt(localStorage.getItem('orbitMatchBestScore') || 0);
+        let score = 0;
+
+        let player = {
+            radius: 65,
+            angle: 0,
+            targetAngle: 0,
+            transitionSpeed: 15 // Decay rate for smooth rotation
+        };
+
+        let enemies = [];
+        let particles = [];
+        let bgParticles = [];
+
+        let enemySpawnTimer = 0;
+        let enemySpawnRate = 1.8; // Seconds between spawns
+        let baseTravelTime = 3.2; // Seconds for enemy to reach center
+
+        function initStars() {
+            bgParticles = [];
+            for (let i = 0; i < 40; i++) {
+                bgParticles.push({
+                    x: Math.random() * window.innerWidth,
+                    y: Math.random() * window.innerHeight,
+                    speed: Math.random() * 30 + 10,
+                    radius: Math.random() * 2 + 1,
+                    alpha: Math.random() * 0.5 + 0.1
+                });
+            }
+        }
+
+        function showMenu() {
+            state = STATE_MENU;
+            uiScore.classList.add('hidden');
+            mainMenu.classList.remove('hidden');
+            gameOverScreen.classList.add('hidden');
+            enemies = [];
+            particles = [];
+            player.angle = 0;
+            player.targetAngle = 0;
+        }
+
+        function initGame() {
+            score = 0;
+            uiScore.innerText = score;
+            enemies = [];
+            particles = [];
+            player.angle = 0;
+            player.targetAngle = 0;
+            enemySpawnTimer = 0;
+            
+            enemySpawnRate = 1.8;
+            baseTravelTime = 3.2; 
+
+            state = STATE_PLAYING;
+            updateUI(true);
+        }
+
+        function updateUI(playing) {
+            if (playing) {
+                uiScore.classList.remove('hidden');
+                mainMenu.classList.add('hidden');
+                gameOverScreen.classList.add('hidden');
+            } else {
+                uiScore.classList.add('hidden');
+                gameOverScreen.classList.remove('hidden');
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    localStorage.setItem('orbitMatchBestScore', bestScore);
+                }
+                finalScoreEl.innerText = score;
+                bestScoreEl.innerText = bestScore;
+            }
+        }
+
+        function handleGameOver() {
+            state = STATE_GAMEOVER;
+            updateUI(false);
+            createExplosion(window.innerWidth/2, window.innerHeight/2, '#FFFFFF', 40, true);
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        }
+
+        function rotatePlayer() {
+            if (state === STATE_PLAYING) {
+                player.targetAngle += Math.PI / 2;
+            }
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (state === STATE_PLAYING) rotatePlayer();
+        });
+        canvas.addEventListener('touchstart', (e) => {
+            if (state === STATE_PLAYING) {
+                e.preventDefault();
+                rotatePlayer();
+            }
+        }, {passive: false});
+
+        startBtn.addEventListener('click', initGame);
+        retryBtn.addEventListener('click', () => {
+            if (window.Android && window.Android.showAd) {
+                window.Android.showAd();
+            } else {
+                window.restartGame();
+            }
+        });
+
+        window.restartGame = function() {
+            showMenu();
+        };
+
+        function spawnEnemy() {
+            const dirIndex = Math.floor(Math.random() * 4);
+            const colorIndex = Math.floor(Math.random() * 4);
+            
+            // Calculate distances relative to screen shape
+            const padding = 80;
+            const distX = window.innerWidth / 2 + padding;
+            const distY = window.innerHeight / 2 + padding;
+            
+            // Determine spawn position and actual distance to center
+            let x, y, angle, distance;
+            if (dirIndex === 0) { // Right
+                x = window.innerWidth / 2 + distX; y = window.innerHeight / 2; angle = 0; distance = distX;
+            } else if (dirIndex === 1) { // Bottom
+                x = window.innerWidth / 2; y = window.innerHeight / 2 + distY; angle = Math.PI / 2; distance = distY;
+            } else if (dirIndex === 2) { // Left
+                x = window.innerWidth / 2 - distX; y = window.innerHeight / 2; angle = Math.PI; distance = distX;
+            } else { // Top
+                x = window.innerWidth / 2; y = window.innerHeight / 2 - distY; angle = Math.PI * 1.5; distance = distY;
+            }
+            
+            // Time-to-Impact logic: Speed = Distance / TravelTime
+            // travelTime decreases as score increases
+            const currentTravelTime = Math.max(0.8, baseTravelTime - (score * 0.05));
+            const speed = distance / currentTravelTime;
+
+            enemies.push({
+                x: x, y: y,
+                colorIndex: colorIndex,
+                color: COLORS[colorIndex],
+                radius: 14,
+                speed: speed,
+                angle: angle,
+                dirIndex: dirIndex 
+            });
+        }
+
+        function createExplosion(x, y, color, count, large = false) {
+            for (let i = 0; i < count; i++) {
+                const velAngle = Math.random() * Math.PI * 2;
+                const velMag = large ? (Math.random() * 400 + 100) : (Math.random() * 250 + 50);
+                particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(velAngle) * velMag,
+                    vy: Math.sin(velAngle) * velMag,
+                    life: 1,
+                    decay: Math.random() * 1.5 + 1,
+                    color: color,
+                    size: Math.random() * (large ? 5 : 3.5) + 1.5
+                });
+            }
+        }
+
+        function checkCollision(enemy, index) {
+            const cx = window.innerWidth/2;
+            const cy = window.innerHeight/2;
+            const distSq = Math.pow(enemy.x - cx, 2) + Math.pow(enemy.y - cy, 2);
+            
+            if (distSq <= Math.pow(player.radius + enemy.radius, 2)) {
+                let rotationSteps = Math.round(player.angle / (Math.PI/2)) % 4;
+                if(rotationSteps < 0) rotationSteps += 4;
+                
+                let matchingColorIndex = (enemy.dirIndex - rotationSteps + 4) % 4;
+                
+                if (matchingColorIndex === enemy.colorIndex) {
+                    score++;
+                    uiScore.innerText = score;
+                    uiScore.classList.add('bump');
+                    setTimeout(() => uiScore.classList.remove('bump'), 150);
+                    createExplosion(enemy.x, enemy.y, enemy.color, 18);
+                    if (navigator.vibrate) navigator.vibrate(20);
+                    enemies.splice(index, 1);
+                    
+                    // Slightly increase spawn frequency
+                    enemySpawnRate = Math.max(0.7, 1.8 - (score * 0.02)); 
+                } else {
+                    handleGameOver();
+                }
+            }
+        }
+
+        function update(dt) {
+            let w = window.innerWidth;
+            let h = window.innerHeight;
+
+            for(let p of bgParticles) {
+                p.y += p.speed * dt;
+                if(p.y > h + p.radius) {
+                    p.y = -p.radius;
+                    p.x = Math.random() * w;
+                }
+            }
+
+            if (state === STATE_PLAYING) {
+                player.angle += (player.targetAngle - player.angle) * (1 - Math.exp(-player.transitionSpeed * dt));
+                
+                enemySpawnTimer -= dt;
+                if (enemySpawnTimer <= 0) {
+                    spawnEnemy();
+                    enemySpawnTimer = enemySpawnRate;
+                }
+                
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    let e = enemies[i];
+                    e.x -= Math.cos(e.angle) * e.speed * dt;
+                    e.y -= Math.sin(e.angle) * e.speed * dt;
+                    checkCollision(e, i);
+                }
+            }
+            
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.life -= p.decay * dt;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function hexToRgb(hex) {
+            let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '255,255,255';
+        }
+
+        function draw() {
+            let w = window.innerWidth;
+            let h = window.innerHeight;
+            ctx.clearRect(0, 0, w, h);
+            
+            for(let p of bgParticles) {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha * 0.3})`;
+                ctx.fill();
+            }
+            
+            let cx = w / 2;
+            let cy = h / 2;
+            
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(cx, 0); ctx.lineTo(cx, h);
+            ctx.moveTo(0, cy); ctx.lineTo(w, cy);
+            ctx.stroke();
+            
+            if (state !== STATE_GAMEOVER) {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(player.angle);
+                const arcSize = Math.PI / 2;
+                for (let i = 0; i < 4; i++) {
+                    ctx.beginPath();
+                    let start = i * arcSize - (arcSize/2);
+                    let end = (i+1) * arcSize - (arcSize/2);
+                    ctx.arc(0, 0, player.radius, start, end);
+                    ctx.lineTo(0,0);
+                    ctx.shadowBlur = 12;
+                    ctx.shadowColor = COLORS[i];
+                    ctx.fillStyle = COLORS[i];
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(0, 0, player.radius, start, end);
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.globalAlpha = 0.5;
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                }
+                ctx.beginPath();
+                ctx.arc(0, 0, player.radius * 0.45, 0, Math.PI * 2);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#0d0d12';
+                ctx.fill();
+                ctx.restore();
+            }
+            
+            for (let e of enemies) {
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = e.color;
+                ctx.fillStyle = e.color;
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(e.x, e.y);
+                ctx.lineTo(e.x + Math.cos(e.angle) * 25, e.y + Math.sin(e.angle) * 25);
+                ctx.strokeStyle = `rgba(${hexToRgb(e.color)},0.4)`;
+                ctx.lineWidth = e.radius * 1.5;
+                ctx.lineCap = 'round';
+                ctx.shadowBlur = 0;
+                ctx.stroke();
+            }
+            
+            for (let p of particles) {
+                ctx.globalAlpha = Math.max(0, p.life);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            if (state === STATE_GAMEOVER) {
+                ctx.fillStyle = 'rgba(255, 0, 85, 0.15)';
+                ctx.fillRect(0,0, w, h);
+            }
+        }
+
+        let lastTimeLoop = 0;
+        function gameLoop(timestamp) {
+            if (!lastTimeLoop) lastTimeLoop = timestamp;
+            const dt = (timestamp - lastTimeLoop) / 1000;
+            lastTimeLoop = timestamp;
+            update(dt > 0.1 ? 0.1 : dt);
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        initStars();
+        requestAnimationFrame(gameLoop);
+        showMenu();
+
+    </script>
+</body>
+</html>

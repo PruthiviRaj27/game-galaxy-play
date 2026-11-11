@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Gravity Dash — Game Galaxy</title>
+
+    <!-- Standard favicon -->
+    <link rel="shortcut icon" href="assets/favicon.ico" type="image/x-icon">
+
+    <!-- PNG favicons for modern browsers -->
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+
+    <!-- Android / Chrome icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/android-chrome-512x512.png">
+
+    <!-- Apple Touch Icon (iOS home screen) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Righteous&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Share Tech Mono', monospace;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0b0218;
+            overscroll-behavior-y: none;
+            touch-action: none;
+        }
+
+        #game-container {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #score-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1;
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8), 0 0 20px rgba(0,255,255,0.4);
+            transition: transform 0.1s;
+            z-index: 10;
+            letter-spacing: 2px;
+        }
+
+        #score-display.bump {
+            transform: scale(1.1);
+            color: #fff;
+        }
+
+        .panel {
+            background: rgba(15, 5, 25, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 2px solid #ff00ff;
+            border-radius: 4px;
+            padding: 35px 25px;
+            text-align: center;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 0 30px rgba(255, 0, 255, 0.3), inset 0 0 20px rgba(255, 0, 255, 0.15);
+            max-width: 85%;
+            width: 320px;
+            z-index: 20;
+            animation: glitchIn 0.3s ease-out;
+        }
+
+        @keyframes glitchIn {
+            0% { opacity: 0; transform: scale(0.9) skewX(-10deg); }
+            50% { transform: scale(1.05) skewX(10deg); }
+            100% { opacity: 1; transform: scale(1) skewX(0); }
+        }
+
+        .panel h1 {
+            font-family: 'Righteous', cursive;
+            font-size: 3.8rem;
+            color: #ff00ff;
+            line-height: 0.9;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 0px #00ffff;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        .panel h1 span {
+            color: #00ffff;
+            text-shadow: 3px 3px 0px #ff00ff;
+        }
+
+        .panel p {
+            color: #d1b3ff;
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            line-height: 1.4;
+        }
+
+        .panel h2 {
+            font-family: 'Righteous', cursive;
+            font-size: 2.2rem;
+            color: #ff0055;
+            margin-bottom: 20px;
+            text-shadow: 0 0 15px rgba(255, 0, 85, 0.8);
+            line-height: 1.2;
+            letter-spacing: 2px;
+        }
+
+        .scores {
+            margin-bottom: 30px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #00ffff;
+            padding: 15px;
+            width: 100%;
+        }
+
+        .scores p {
+            font-size: 1.2rem;
+            color: #aaa;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .scores p:last-child {
+            margin-bottom: 0;
+        }
+
+        .scores span {
+            color: #fff;
+        }
+
+        .scores span#best-score {
+            color: #ff00ff;
+            text-shadow: 0 0 10px rgba(255, 0, 255, 0.4);
+        }
+
+        .btn {
+            background: transparent;
+            border: 2px solid #00ffff;
+            padding: 15px 0;
+            width: 100%;
+            color: #00ffff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2), inset 0 0 10px rgba(0, 255, 255, 0.2);
+            transition: all 0.1s;
+            outline: none;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-family: 'Righteous', cursive;
+        }
+
+        .btn:active {
+            background: #00ffff;
+            color: #000;
+            transform: scale(0.96);
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="ui-layer">
+            <div id="score-display" class="hidden">00000</div>
+            
+            <div id="main-menu" class="panel">
+                <h1>GRAVITY<br><span>DASH</span></h1>
+                <p>Tap anywhere to flip gravity between walls. Dodge the neon spikes!</p>
+                <button id="start-btn" class="btn">INITIALIZE</button>
+            </div>
+            
+            <div id="game-over" class="panel hidden">
+                <h2>SYSTEM FAILURE</h2>
+                <div class="scores">
+                    <p>DISTANCE: <span id="final-score">0</span></p>
+                    <p>RECORD: <span id="best-score">0</span></p>
+                </div>
+                <button id="retry-btn" class="btn">REBOOT</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const uiScore = document.getElementById('score-display');
+        const mainMenu = document.getElementById('main-menu');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreEl = document.getElementById('final-score');
+        const bestScoreEl = document.getElementById('best-score');
+        const startBtn = document.getElementById('start-btn');
+        const retryBtn = document.getElementById('retry-btn');
+
+        let w, h;
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            w = window.innerWidth;
+            h = window.innerHeight;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            ctx.scale(dpr, dpr);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const STATE_MENU = 0;
+        const STATE_PLAYING = 1;
+        const STATE_GAMEOVER = 2;
+
+        let state = STATE_MENU;
+        let bestScore = parseInt(localStorage.getItem('gravityDashBestScore') || 0);
+
+        let currentSpeed = 300; // Reduced from 480
+        let bgOffset = 0;
+        let distanceScore = 0;
+        let uiScoreValue = 0;
+
+        let player = {
+            x: 0,
+            y: 0,
+            size: 30,
+            vx: 0,
+            gravityState: 1, // 1 = right, -1 = left
+            gravityPower: 3200, // Increased for very fast snappy movement
+            maxSpeed: 2400,    // Increased for very fast snappy movement
+        };
+
+        let obstacles = [];
+        let particles = [];
+        let trails = []; 
+
+        let spawnTimer = 0;
+        const wallWidth = 6;
+
+        function initLevel() {
+            w = window.innerWidth;
+            h = window.innerHeight;
+            
+            player.size = Math.min(30, w * 0.08);
+            player.x = wallWidth;
+            player.y = h * 0.75;
+            player.vx = 0;
+            player.gravityState = 1;
+            
+            obstacles = [];
+            particles = [];
+            trails = [];
+            
+            currentSpeed = 300 + (h > 800 ? 60 : 0); // Reduced from 480+120
+            distanceScore = 0;
+            uiScoreValue = 0;
+            bgOffset = 0;
+            spawnTimer = 0.8; // Increased from 0.5
+            
+            uiScore.innerText = padScore(0);
+        }
+
+        function showMenu() {
+            state = STATE_MENU;
+            uiScore.classList.add('hidden');
+            mainMenu.classList.remove('hidden');
+            gameOverScreen.classList.add('hidden');
+            initLevel();
+        }
+
+        function initGame() {
+            initLevel();
+            state = STATE_PLAYING;
+            updateUI(true);
+        }
+
+        function updateUI(playing) {
+            if (playing) {
+                uiScore.classList.remove('hidden');
+                mainMenu.classList.add('hidden');
+                gameOverScreen.classList.add('hidden');
+            } else {
+                uiScore.classList.add('hidden');
+                gameOverScreen.classList.remove('hidden');
+                
+                let finalDist = Math.floor(distanceScore);
+                if (finalDist > bestScore) {
+                    bestScore = finalDist;
+                    localStorage.setItem('gravityDashBestScore', bestScore);
+                }
+                finalScoreEl.innerText = finalDist;
+                bestScoreEl.innerText = bestScore;
+            }
+        }
+
+        function handleGameOver() {
+            state = STATE_GAMEOVER;
+            updateUI(false);
+            if (navigator.vibrate) navigator.vibrate([150, 50, 150]);
+            createExplosion(player.x + player.size/2, player.y + player.size/2, '#00ffff', 40, 1);
+        }
+
+        function flipGravity() {
+            if (state === STATE_PLAYING) {
+                player.gravityState *= -1;
+                player.vx = 0;
+                createExplosion(player.x + player.size/2, player.y + player.size/2, '#ffffff', 8, 0.5);
+                if (navigator.vibrate) navigator.vibrate(15);
+            }
+        }
+
+        function onInput(e) {
+            if (state === STATE_MENU) return;
+            if (e.type === 'touchstart') e.preventDefault();
+            flipGravity();
+        }
+
+        canvas.addEventListener('mousedown', onInput);
+        canvas.addEventListener('touchstart', onInput, {passive: false});
+        window.addEventListener('keydown', (e) => {
+            if (['Space', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+                e.preventDefault();
+                onInput(e);
+            }
+        });
+
+        startBtn.addEventListener('click', initGame);
+        retryBtn.addEventListener('click', () => {
+            if (window.Android && window.Android.showAd) {
+                window.Android.showAd();
+            } else {
+                window.restartGame();
+            }
+        });
+
+        window.restartGame = function() {
+            showMenu();
+        };
+
+        function spawnObstacle() {
+            let isRight = Math.random() > 0.5;
+            let baseWidth = w * 0.2;
+            let varWidth = w * 0.4;
+            let obsW = baseWidth + Math.random() * varWidth;
+            let obsH = Math.min(40, h * 0.05);
+            
+            obstacles.push({
+                x: isRight ? (w - obsW) : 0,
+                y: -100,
+                w: obsW,
+                h: obsH,
+                isRight: isRight
+            });
+        }
+
+        function createExplosion(x, y, color, count, speedMult = 1) {
+            for (let i = 0; i < count; i++) {
+                const velAngle = Math.random() * Math.PI * 2;
+                const velMag = (Math.random() * 400 + 100) * speedMult;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(velAngle) * velMag,
+                    vy: Math.sin(velAngle) * velMag,
+                    life: 1,
+                    color: color,
+                    size: Math.random() * 4 + 1
+                });
+            }
+        }
+
+        function padScore(num) {
+            return Math.floor(num).toString().padStart(5, '0');
+        }
+
+        function update(dt) {
+            w = window.innerWidth;
+            h = window.innerHeight;
+
+            if (state === STATE_PLAYING) {
+                // Physics
+                player.vx += player.gravityPower * player.gravityState * dt;
+                if (player.vx > player.maxSpeed) player.vx = player.maxSpeed;
+                if (player.vx < -player.maxSpeed) player.vx = -player.maxSpeed;
+                
+                player.x += player.vx * dt;
+                
+                // Wall collisions
+                if (player.x > w - player.size - wallWidth) {
+                    player.x = w - player.size - wallWidth;
+                    if (player.vx > 0) player.vx = 0;
+                } else if (player.x < wallWidth) {
+                    player.x = wallWidth;
+                    if (player.vx < 0) player.vx = 0;
+                }
+                
+                trails.push({x: player.x, y: player.y, life: 1});
+                
+                // Progression
+                currentSpeed += 2 * dt; // Reduced from 5
+                distanceScore += currentSpeed * 0.1 * dt;
+                
+                if (Math.floor(distanceScore) > uiScoreValue) {
+                    uiScoreValue = Math.floor(distanceScore);
+                    uiScore.innerText = padScore(uiScoreValue);
+                    if (uiScoreValue > 0 && uiScoreValue % 100 === 0) {
+                        uiScore.classList.add('bump');
+                        setTimeout(() => uiScore.classList.remove('bump'), 150);
+                    }
+                }
+                
+                bgOffset += currentSpeed * dt;
+                
+                spawnTimer -= dt;
+                if (spawnTimer <= 0) {
+                    spawnObstacle();
+                    let rate = Math.max(0.5, 1.2 - (distanceScore * 0.001)); // Slower spawn rate
+                    spawnTimer = rate + Math.random() * rate;
+                }
+                
+                for (let i = obstacles.length - 1; i >= 0; i--) {
+                    let obs = obstacles[i];
+                    obs.y += currentSpeed * dt;
+                    
+                    // Collision
+                    if (player.x < obs.x + obs.w &&
+                        player.x + player.size > obs.x &&
+                        player.y < obs.y + obs.h &&
+                        player.y + player.size > obs.y) {
+                        handleGameOver();
+                    }
+                    
+                    if (obs.y > h + 100) obstacles.splice(i, 1);
+                }
+            }
+            
+            for (let i = trails.length - 1; i >= 0; i--) {
+                trails[i].y += currentSpeed * 0.8 * dt; 
+                trails[i].life -= 2 * dt;
+                if (trails[i].life <= 0) trails.splice(i, 1);
+            }
+            
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx * dt;
+                p.y += (p.vy + currentSpeed * 0.3) * dt;
+                p.life -= 1.5 * dt;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = '#0b0218';
+            ctx.fillRect(0, 0, w, h);
+            
+            // Grid
+            ctx.strokeStyle = 'rgba(138, 43, 226, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            const gridSize = Math.max(40, w * 0.1);
+            for (let y = 0; y < h + gridSize; y += gridSize) {
+                let drawY = (y + (bgOffset % gridSize));
+                ctx.moveTo(0, drawY);
+                ctx.lineTo(w, drawY);
+            }
+            for (let x = 0; x <= w; x += gridSize) {
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+            }
+            ctx.stroke();
+
+            // Wall lasers
+            ctx.fillStyle = '#ff00ff';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#ff00ff';
+            ctx.fillRect(0, 0, wallWidth, h);
+            ctx.fillRect(w - wallWidth, 0, wallWidth, h);
+            
+            ctx.shadowBlur = 0;
+            
+            for (let t of trails) {
+                ctx.fillStyle = `rgba(0, 255, 255, ${t.life * 0.5})`;
+                ctx.fillRect(t.x, t.y, player.size, player.size);
+            }
+            
+            if (state !== STATE_GAMEOVER) {
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#00ffff';
+                ctx.fillStyle = '#00ffff';
+                ctx.fillRect(player.x, player.y, player.size, player.size);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(player.x + 4, player.y + 4, Math.max(2, player.size - 8), Math.max(2, player.size - 8));
+            }
+            
+            for (let obs of obstacles) {
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#ff00ff';
+                ctx.fillStyle = '#ff00ff';
+                ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#ffb3ff';
+                ctx.fillRect(obs.x + (obs.isRight ? 0 : 4), obs.y + 4, obs.w - 4, obs.h - 8);
+            }
+            
+            for (let p of particles) {
+                ctx.globalAlpha = Math.max(0, p.life);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+            
+            if (state === STATE_GAMEOVER) {
+                ctx.fillStyle = 'rgba(255, 0, 85, 0.15)';
+                ctx.fillRect(0, 0, w, h);
+            }
+        }
+
+        let lastTimeLoop = 0;
+        function gameLoop(timestamp) {
+            if (!lastTimeLoop) lastTimeLoop = timestamp;
+            const dt = (timestamp - lastTimeLoop) / 1000;
+            lastTimeLoop = timestamp;
+            update(dt > 0.1 ? 0.1 : dt);
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        requestAnimationFrame(gameLoop);
+        showMenu();
+    </script>
+</body>
+</html>

@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Game Galaxy — Home</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root{
+          --bg:#0f1724;
+          --card:#0f1724;
+          --panel:#0b1220;
+          --muted:#9aa4b2;
+          --accent:#6ee7b7;
+          --accent-2:#60a5fa;
+          --glass: rgba(255,255,255,0.03);
+        }
+        *{box-sizing:border-box}
+        html,body{height:100%}
+        body{
+          margin:0;
+          font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;
+          color:#e6eef6;
+          -webkit-font-smoothing:antialiased;
+          -moz-osx-font-smoothing:grayscale;
+          padding:32px;
+
+          background-color:#000; /* base dark canvas backing; actual art drawn on background canvas */
+        }
+
+        /* Background canvas will draw stars/nebula/planets to replicate game-like background */
+        #bgCanvas{ position: fixed; inset: 0; width:100%; height:100%; z-index: -1; pointer-events: none; }
+
+        .container{
+          max-width:1200px;
+          margin:0 auto;
+        }
+
+        header.header{
+          display:flex;
+          gap:16px;
+          align-items:center;
+          justify-content:space-between;
+          margin-bottom:20px;
+        }
+
+        .brand{
+          display:flex;
+          gap:12px;
+          align-items:center;
+        }
+
+        .logo{
+          width:52px;
+          height:52px;
+          border-radius:10px;
+          background: linear-gradient(135deg,var(--accent),var(--accent-2));
+          display:grid;
+          place-items:center;
+          font-weight:700;
+          color:#022;
+          box-shadow:0 6px 18px rgba(96,165,250,0.08), inset 0 -6px 12px rgba(255,255,255,0.06);
+        }
+
+        h1.title{
+          font-size:20px;
+          margin:0;
+          letter-spacing:0.2px;
+        }
+
+        p.subtitle{
+          margin:0;
+          color:var(--muted);
+          font-size:13px;
+        }
+
+        .controls{
+          display:flex;
+          gap:12px;
+          align-items:center;
+        }
+
+        .search{
+          display:flex;
+          gap:8px;
+          align-items:center;
+          background:var(--glass);
+          padding:8px 12px;
+          border-radius:12px;
+          min-width:260px;
+          border:1px solid rgba(255,255,255,0.03);
+        }
+
+        .search input{
+          background:transparent;
+          border:0;
+          outline:0;
+          color:inherit;
+          width:100%;
+          font-size:14px;
+        }
+
+        .filters{
+          display:flex;
+          gap:8px;
+          align-items:center;
+          flex-wrap:wrap;
+        }
+
+        .chip{
+          background:transparent;
+          border:1px solid rgba(255,255,255,0.04);
+          padding:6px 10px;
+          border-radius:999px;
+          font-size:13px;
+          color:var(--muted);
+          cursor:pointer;
+        }
+
+        .chip.active{
+          background:linear-gradient(90deg, rgba(110,231,183,0.12), rgba(96,165,250,0.08));
+          color:var(--accent-2);
+          border-color:rgba(96,165,250,0.12);
+          box-shadow:0 6px 18px rgba(2,6,23,0.6);
+        }
+
+        .meta{
+          display:flex;
+          gap:12px;
+          align-items:center;
+          color:var(--muted);
+          font-size:13px;
+        }
+
+        main.grid{
+          margin-top:20px;
+          display:grid;
+          /* fixed-width columns so cards keep the same size regardless of count */
+          grid-template-columns: repeat(auto-fill, 240px);
+          justify-content: center; /* center the grid when there's extra space */
+          gap:18px;
+        }
+
+        .card{
+          width:240px; /* fixed card width */
+          background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+          border-radius:12px;
+          overflow:hidden;
+          border:1px solid rgba(255,255,255,0.03);
+          transition:transform .18s ease, box-shadow .18s ease;
+          display:flex;
+          flex-direction:column;
+          min-height:0;
+          box-sizing:border-box;
+        }
+
+        .card:hover{
+          transform:translateY(-8px);
+          box-shadow: 0 18px 40px rgba(2,6,23,0.6);
+        }
+
+        .thumb{
+          width:100%;
+          aspect-ratio: 1 / 1; /* force 1:1 square thumbnails */
+          background-size:cover;
+          background-position:center;
+          position:relative;
+        }
+
+        .thumb .tag{
+          position:absolute;
+          left:10px;
+          top:10px;
+          padding:6px 8px;
+          font-size:12px;
+          border-radius:8px;
+          background:rgba(2,6,23,0.5);
+          color:var(--accent-2);
+          border:1px solid rgba(255,255,255,0.04);
+        }
+
+        .card-body{
+          padding:14px;
+          display:flex;
+          flex-direction:column;
+          gap:8px;
+          flex: none; /* prevent stretching so single search results stay compact */
+        }
+
+        .game-title{
+          font-weight:600;
+          font-size:16px;
+          margin:0;
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:8px;
+        }
+
+        .game-sub{
+          display:flex;
+          gap:8px;
+          align-items:center;
+          color:var(--muted);
+          font-size:13px;
+        }
+
+        .badges{
+          margin-top:auto;
+          display:flex;
+          justify-content:space-between;
+          gap:12px;
+          align-items:center;
+        }
+
+        .play-btn{
+          background:linear-gradient(90deg,var(--accent),var(--accent-2));
+          border:0;
+          color:#022;
+          padding:8px 12px;
+          border-radius:10px;
+          cursor:pointer;
+          font-weight:600;
+          box-shadow:0 8px 24px rgba(6,78,59,0.08);
+          text-decoration:none;
+        }
+
+        .muted{
+          color:var(--muted);
+          font-size:13px;
+        }
+
+        .rating{
+          background:rgba(255,255,255,0.03);
+          padding:6px 8px;
+          border-radius:8px;
+          font-weight:600;
+          display:inline-flex;
+          gap:6px;
+          align-items:center;
+        }
+
+        footer{
+          margin-top:28px;
+          color:var(--muted);
+          font-size:13px;
+          text-align:center;
+        }
+
+        @media (max-width:520px){
+          header.header{flex-direction:column;align-items:flex-start;gap:12px}
+          .controls{width:100%;justify-content:space-between}
+          .search{min-width:0;flex:1}
+        }
+    </style>
+</head>
+<body>
+  <canvas id="bgCanvas" aria-hidden="true"></canvas>
+   <div class="container">
+    <header class="header">
+        <div class="brand">
+            <div class="logo">GG</div>
+            <div>
+                <h1 class="title">Game Galaxy</h1>
+                <p class="subtitle">Discover and play trending browser games</p>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="search" role="search" aria-label="Search games">
+                <span aria-hidden="true" style="opacity:.8;font-size:16px;line-height:1">🔍</span>
+                <input id="search" aria-label="Search games" placeholder="Search games, e.g. platformer, chess" />
+            </div>
+
+            <div style="display:flex;align-items:center;gap:12px">
+                <select id="sort" title="Sort games" style="background:var(--glass);border-radius:10px;padding:8px;border:1px solid rgba(255,255,255,0.03);color:var(--muted)">
+                    <option value="featured">Featured</option>
+                    <option value="rating">Top Rated</option>
+                    <option value="az">A - Z</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <div class="meta" style="justify-content:space-between;margin-bottom:12px">
+        <div id="resultCount" class="muted">Showing 0 games</div>
+        <div class="muted" id="activeFilter">Filter: All</div>
+    </div>
+
+    <main class="grid" id="gamesGrid" aria-live="polite">
+        <!-- Cards inserted here -->
+    </main>
+
+    <footer>
+        Made with care — browse, pick, and play. © Game Galaxy
+    </footer>
+</div>
+
+<script>
+    // Background canvas: starfield + nebula + comets
++(function(){
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let w=0,h=0, DPR = Math.max(1, window.devicePixelRatio || 1);
+  let mouseX = 0, mouseY = 0;
+
+  window.addEventListener('mousemove', e=>{ mouseX = e.clientX; mouseY = e.clientY; });
+
+  function resize(){
+    DPR = Math.max(1, window.devicePixelRatio || 1);
+    w = window.innerWidth; h = window.innerHeight;
+    canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+    canvas.width = Math.floor(w * DPR); canvas.height = Math.floor(h * DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    buildStars(); buildNebula(); buildComets();
+  }
+
+  // stars: two layers (micro + regular)
+  let stars = [], microStars = [];
+  function buildStars(){
+    const area = w*h;
+    const mainCount = Math.round(Math.min(1200, area / 4500));
+    const microCount = Math.round(Math.min(2500, area / 2500));
+    stars = []; microStars = [];
+    for(let i=0;i<mainCount;i++) stars.push({ x: Math.random()*w, y: Math.random()*h, z: Math.random(), vx: (Math.random()-0.5)*0.05, vy: 0.04 + Math.random()*0.4 });
+    for(let i=0;i<microCount;i++) microStars.push({ x: Math.random()*w, y: Math.random()*h, a: 0.2 + Math.random()*0.8, s: 0.4 + Math.random()*0.9 });
+  }
+
+  // nebula
+  const nebula = [];
+  function buildNebula(){
+    nebula.length=0;
+    const colors = [[40,220,160,0.08],[20,140,200,0.06],[10,60,130,0.05]];
+    for(let i=0;i<3;i++) nebula.push({ x: Math.random()*w, y: Math.random()*h, r: Math.max(w,h)*(0.25+Math.random()*0.45), color: colors[i%colors.length], ang: Math.random()*Math.PI*2, speed: (0.01+Math.random()*0.04) });
+  }
+
+  // comets
+  const comets = [];
+  function buildComets(){ comets.length=0; }
+  function spawnComet(){ if(comets.length>4) return; comets.push({ x: Math.random()*w, y: -20, vx: -2 - Math.random()*6, vy: 6 + Math.random()*4, life: 0, max: 80 + Math.random()*120 }); }
+
+  let lastComet = 0;
+
+  function draw(){
+    ctx.clearRect(0,0,w,h);
+    const g = ctx.createLinearGradient(0,0,0,h);
+    g.addColorStop(0,'#001018'); g.addColorStop(0.6,'#001822'); g.addColorStop(1,'#000');
+    ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+
+    nebula.forEach((n,i)=>{
+      n.ang += n.speed*0.003;
+      const px = (mouseX - w/2) * 0.02 * (i+1);
+      const py = (mouseY - h/2) * 0.02 * (i+1);
+      const nx = n.x + Math.sin(n.ang)*40 + px;
+      const ny = n.y + Math.cos(n.ang*0.6)*30 + py;
+      const rg = ctx.createRadialGradient(nx,ny,n.r*0.05,nx,ny,n.r);
+      const c = n.color;
+      rg.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${c[3]*1.4})`);
+      rg.addColorStop(0.35, `rgba(${c[0]},${c[1]},${c[2]},${c[3]*0.6})`);
+      rg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = rg; ctx.fillRect(nx-n.r, ny-n.r, n.r*2, n.r*2); ctx.globalCompositeOperation = 'source-over';
+    });
+
+    for(let i=0;i<microStars.length;i++){
+      const ms = microStars[i];
+      ctx.fillStyle = `rgba(255,255,255,${ms.a * 0.18})`;
+      ctx.fillRect(ms.x, ms.y, ms.s*0.6, ms.s*0.6);
+      ms.y += 0.2; if(ms.y>h) ms.y = 0; ms.x += 0.1; if(ms.x> w) ms.x = 0;
+    }
+
+    for(let i=0;i<stars.length;i++){
+      const s = stars[i];
+      const tw = 0.5 + Math.abs(Math.sin((Date.now()*0.002 + i)*0.03)) * 0.6 * s.z;
+      const size = 0.6 + s.z*1.6;
+      ctx.fillStyle = `rgba(255,255,255,${0.7 * tw})`;
+      ctx.beginPath(); ctx.arc(s.x, s.y, size, 0, Math.PI*2); ctx.fill();
+      s.x += s.vx * (1 + s.z*8);
+      s.y += s.vy * (1 + s.z*8);
+      if(s.y > h + 8) s.y = -8; if(s.x < -8) s.x = w + 8; if(s.x > w + 8) s.x = -8;
+    }
+
+    if(Date.now() - lastComet > 2200 + Math.random()*3000) { spawnComet(); lastComet = Date.now(); }
+    for(let i=comets.length-1;i>=0;i--){
+      const c = comets[i]; c.life++; c.x += c.vx; c.y += c.vy;
+      const t = c.life / c.max;
+      const tx = c.x - c.vx*6, ty = c.y - c.vy*6;
+      const lg = ctx.createLinearGradient(tx,ty,c.x,c.y);
+      lg.addColorStop(0, 'rgba(255,255,255,0)'); lg.addColorStop(0.6, 'rgba(255,255,255,0.5)'); lg.addColorStop(1, 'rgba(255,255,255,0.95)');
+      ctx.strokeStyle = lg; ctx.lineWidth = 2 + (1-t)*3; ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(c.x,c.y); ctx.stroke();
+      ctx.fillStyle = `rgba(255,255,255,${0.95 - t*0.7})`; ctx.beginPath(); ctx.arc(c.x,c.y,2.8 + (1-t)*2,0,Math.PI*2); ctx.fill();
+      if(c.life > c.max) comets.splice(i,1);
+    }
+    requestAnimationFrame(draw);
+  }
+  function init(){ buildStars(); buildNebula(); buildComets(); draw(); }
+  window.addEventListener('resize', resize);
+  resize(); init();
+})();
+
+    let games = [];
+
+    function slugify(s){
+      return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+    }
+
+    function toLocalGameUrl(gameUrl){
+      if (!gameUrl) return '';
+      return './games/' + gameUrl;
+    }
+
+    function toLocalPosterPath(posterPath) {
+      if (!posterPath) return null;
+      return './games/' + posterPath;
+    }
+
+const gamesGrid = document.getElementById('gamesGrid');
+const searchInput = document.getElementById('search');
+const resultCount = document.getElementById('resultCount');
+const sortEl = document.getElementById('sort');
+
+let query = '';
+let sortMode = 'featured';
+
+function thumbFor(title, offset=0){
+  const hash = Array.from(title||'').reduce((s,c)=>s + c.charCodeAt(0),0);
+  const h1 = (hash * 137) % 360;
+  const h2 = (h1 + 50 + offset*23) % 360;
+  const initial = (title||'').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase() || 'G';
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='800' height='400'>
+    <defs><linearGradient id='g' x1='0' x2='1' y1='0' x2='1'><stop offset='0' stop-color='hsl(${h1} 85% 60%)'/><stop offset='1' stop-color='hsl(${h2} 75% 45%)'/></linearGradient></defs>
+    <rect width='100%' height='100%' fill='url(#g)' />
+    <text x='50%' y='55%' font-size='120' font-family='Inter, sans-serif' fill='rgba(255,255,255,0.92)' text-anchor='middle' font-weight='700'>${initial}</text>
+  </svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+function renderCards(list){
+  gamesGrid.innerHTML = '';
+  if(!list || !list.length){
+    gamesGrid.innerHTML = `<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--muted)">No games found</div>`;
+    resultCount.textContent = 'Showing 0 games';
+    return;
+  }
+  resultCount.textContent = `Showing ${list.length} games`;
+
+  list.forEach((g,i)=>{
+    const generated = thumbFor(g.title, i);
+    const card = document.createElement('article');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="thumb" style="background-image:url('${generated}')">
+        <div class="tag">${g.genre || ''}</div>
+      </div>
+      <div class="card-body">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="game-title">
+            <span>${g.title}</span>
+            <span class="rating">★ ${Number(g.rating||4).toFixed(1)}</span>
+          </div>
+          <div class="game-sub">
+            <div class="muted">${g.players || '1'} players</div>
+            <div class="muted">·</div>
+            <div class="muted">${g.genre || ''}</div>
+          </div>
+        </div>
+        <div class="badges">
+          <a class="play-btn" href="${g.url}" aria-label="Play ${g.title}">Play</a>
+          <div class="muted">ID: ${g.id}</div>
+        </div>
+      </div>
+    `;
+    gamesGrid.appendChild(card);
+
+    if(g.fullPosterUrl){
+      const img = new Image();
+      img.onload = function(){
+        card.querySelector('.thumb').style.backgroundImage = `url('${g.fullPosterUrl}')`;
+      };
+      img.src = g.fullPosterUrl;
+    }
+  });
+}
+
+function applyFilters(){
+  let out = games.slice();
+  if(query.trim()){
+    const q = query.toLowerCase();
+    out = out.filter(g => (g.title||'').toLowerCase().includes(q) || (g.genre||'').toLowerCase().includes(q));
+  }
+  if(sortMode === 'rating') out.sort((a,b)=>b.rating - a.rating);
+  else if(sortMode === 'az') out.sort((a,b)=>a.title.localeCompare(b.title));
+  renderCards(out);
+}
+
+function debounce(fn,ms=200){let t;return (...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}}
+
+searchInput.addEventListener('input', debounce((e)=>{ query = e.target.value; applyFilters(); },200));
+sortEl.addEventListener('change', (e)=>{ sortMode = e.target.value; applyFilters(); });
+
+fetch('./games/games.json')
+  .then(r=>r.json())
+  .then(data=>{
+    games = data.map((g, idx) => ({
+      id: g.id,
+      title: g.title,
+      url: toLocalGameUrl(g.game_url),
+      fullPosterUrl: toLocalPosterPath(g.poster_url),
+      // Use Safe Fallbacks for UI-only variables (Genre, Rating, Players)
+      rating: (4.0 + (g.id % 10) / 10),
+      players: '1',
+      genre: 'Arcade',
+      _originalIndex: idx
+    }));
+    applyFilters();
+  })
+  .catch(err=>console.warn('Could not load games/games.json:', err));
+</script>
+</body>
+</html>
