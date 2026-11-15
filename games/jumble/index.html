@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jumble!</title>
+
+    <!-- Standard favicon -->
+    <link rel="shortcut icon" href="assets/favicon.ico" type="image/x-icon">
+
+    <!-- PNG favicons for modern browsers -->
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+
+    <!-- Android / Chrome icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/android-chrome-512x512.png">
+
+    <!-- Apple Touch Icon (iOS home screen) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 1rem;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Letter Input Styling */
+        .letter-input {
+            caret-color: transparent; /* Hide cursor for cleaner look */
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .letter-input:focus {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(129, 140, 248, 0.3);
+            border-color: #818cf8;
+        }
+
+        .letter-input.error {
+            border-color: #ef4444;
+            animation: shake 0.4s cubic-bezier(.36, .07, .19, .97) both;
+            color: #ef4444;
+        }
+
+        .letter-input.filled {
+            border-color: #fbbf24;
+            background: rgba(251, 191, 36, 0.1);
+        }
+
+        /* Animations */
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        @keyframes pop {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .pop-in {
+            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* Gradient Text */
+        .gradient-text {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Custom Scrollbar for inputs container if word is long */
+        .inputs-wrapper {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .inputs-wrapper::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="relative w-full max-w-lg">
+
+    <!-- Main Game Card -->
+    <div id="game-screen" class="glass-panel rounded-3xl p-6 sm:p-8 w-full relative overflow-hidden transition-all duration-300">
+
+        <!-- Header: Level & Streak -->
+        <div class="flex justify-between items-end mb-6">
+            <div>
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Current Streak</p>
+                <div class="text-3xl font-black text-white flex items-baseline gap-2">
+                    <span id="level-display">1</span>
+                    <span class="text-sm font-normal text-gray-400">Level</span>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">High Score</p>
+                <div class="text-xl font-bold text-yellow-500 flex items-center justify-end gap-2">
+                    <i class="fas fa-crown text-yellow-600 text-sm"></i>
+                    <span id="high-score-display">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Difficulty Indicator -->
+        <div class="flex justify-center mb-6">
+                <span id="difficulty-badge" class="px-4 py-1.5 rounded-full bg-blue-500/20 text-blue-300 text-xs font-black uppercase tracking-widest border border-blue-500/30 transition-all duration-300">
+                    Easy
+                </span>
+        </div>
+
+        <!-- Lives/Attempts -->
+        <div class="flex justify-center mb-8 gap-2" id="lives-container">
+            <!-- Hearts generated by JS -->
+        </div>
+
+        <!-- Scrambled Word -->
+        <div class="text-center mb-8">
+            <div class="inline-block relative">
+                <h1 id="scrambled-word" class="relative text-5xl sm:text-6xl font-black tracking-widest uppercase text-white drop-shadow-2xl">
+                    ---
+                </h1>
+            </div>
+            <p class="text-gray-400 text-sm mt-3 font-medium">Unscramble the word</p>
+        </div>
+
+        <!-- Input Boxes -->
+        <div class="mb-8">
+            <div id="inputs-container" class="inputs-wrapper flex justify-center gap-2 sm:gap-3 flex-wrap">
+                <!-- Dynamic Inputs injected here -->
+            </div>
+            <p id="error-message" class="h-6 text-center text-red-400 text-sm font-bold mt-3 opacity-0 transition-opacity duration-200">
+                <!-- Error text -->
+            </p>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-row gap-4">
+            <!-- Clear Button: Smaller, on the left (Back/Reset action) -->
+            <button id="clear-btn" class="flex-1 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 font-bold py-4 rounded-xl active:scale-[0.98] transition-all transform uppercase tracking-wider text-xs border border-gray-600/30">
+                Clear
+            </button>
+
+            <!-- Submit Button: Larger, on the right (Forward action) -->
+            <button id="submit-btn" class="flex-[2] bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-500/30 active:scale-[0.98] transition-all transform uppercase tracking-wider text-sm">
+                Submit
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Game Over Modal (Hidden by default) -->
+    <div id="game-over-modal" class="absolute inset-0 z-50 hidden items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-3xl"></div>
+        <div class="relative bg-[#1e293b] border border-gray-700 p-8 rounded-2xl text-center max-w-sm w-full shadow-2xl pop-in">
+            <div class="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-heart-crack text-4xl text-red-500"></i>
+            </div>
+
+            <h2 class="text-3xl font-black text-white mb-2">Game Over!</h2>
+            <p class="text-gray-400 mb-6">You ran out of attempts.</p>
+
+            <div class="bg-gray-800/50 rounded-xl p-4 mb-6">
+                <p class="text-xs text-gray-500 uppercase font-bold mb-1">Correct Word Was</p>
+                <p id="correct-answer-display" class="text-xl font-bold text-yellow-400 tracking-wider uppercase break-words">APPLE</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-gray-800/50 p-3 rounded-lg">
+                    <p class="text-xs text-gray-500">Streak</p>
+                    <p id="final-score" class="text-xl font-bold text-white">0</p>
+                </div>
+                <div class="bg-gray-800/50 p-3 rounded-lg">
+                    <p class="text-xs text-gray-500">Best</p>
+                    <p id="final-best" class="text-xl font-bold text-yellow-500">0</p>
+                </div>
+            </div>
+
+            <!-- UPDATED: ID added, onclick removed -->
+            <button id="try-again-btn" class="w-full bg-green-500 hover:bg-green-400 text-black font-bold py-3 rounded-xl transition-colors">
+                Try Again
+            </button>
+        </div>
+    </div>
+
+</div>
+
+<!-- Notification Toast -->
+<div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 bg-gray-800 border border-gray-700 text-white px-6 py-3 rounded-full shadow-xl transform -translate-y-24 transition-transform duration-300 z-50 flex items-center gap-3">
+    <i class="fas fa-info-circle text-blue-400"></i>
+    <span id="toast-message" class="font-medium text-sm">Notification</span>
+</div>
+
+<script>
+    // --- Game Config & Data ---
+    const INITIAL_LIVES = 3;
+
+    // TIERED WORD BANK for Difficulty Curve
+    const WORDS_BY_TIER = {
+        tier1: [ // 3-4 letters (Levels 1-5)
+            "cat", "act", "dog", "god", "sun", "sky", "cup", "hat", "pen", "box", "key", "map",
+            "run", "fly", "joy", "art", "rat", "tar", "bus", "car", "arc", "bed", "fox", "owl", "bat", "tab",
+            "fish", "frog", "lion", "bear", "duck", "wolf", "crab", "deer", "goat", "seal",
+            "star", "rats", "arts", "moon", "tree", "leaf", "rose", "seed", "dirt", "sand", "rock", "hill",
+            "eat", "tea", "ate", "now", "own", "won", "pot", "top", "opt"
+        ],
+        tier2: [ // 5 letters (Levels 6-15)
+            "apple", "bread", "chair", "cloud", "dance", "eagle", "fruit", "grape", "heart", "earth", "house",
+            "juice", "lemon", "melon", "mouse", "music", "night", "thing", "ocean", "canoe", "party", "phone", "piano",
+            "pizza", "plant", "radio", "river", "robot", "sheep", "shirt", "shoes", "smile", "limes", "miles", "snake",
+            "space", "capes", "spoon", "storm", "sugar", "table", "bleat", "tiger", "toast", "train", "truck", "watch",
+            "water", "whale", "witch", "world", "zebra", "brick", "clock", "flame", "glass", "grass"
+        ],
+        tier3: [ // 6 letters (Levels 16-30)
+            "banana", "camera", "castle", "circle", "coffee", "doctor", "dragon", "energy", "family", "flower",
+            "forest", "friend", "galaxy", "garden", "guitar", "island", "jungle", "laptop", "market", "monkey",
+            "mother", "nature", "orange", "pencil", "pirate", "planet", "pocket", "police", "purple", "rabbit",
+            "rocket", "school", "shark", "silver", "sister", "soccer", "spider", "spirit", "spring", "square",
+            "street", "summer", "sunday", "sunset", "system", "tennis", "ticket", "turtle", "valley", "window",
+            "winter", "wonder", "yellow", "zombie", "butter", "candle", "cookie", "dinner", "silent", "listen", "rescue", "secure"
+        ],
+        tier4: [ // 7+ letters (Levels 31+)
+            "airport", "balloon", "battery", "bicycle", "blanket", "chicken", "compass", "crystal", "diamond", "dolphin",
+            "elephant", "feather", "firefly", "freedom", "giraffe", "glasses", "holiday", "journey", "kitchen", "lantern",
+            "library", "monster", "morning", "musical", "mystery", "network", "painter", "pancake", "penguin", "perfume",
+            "picnic", "picture", "plastic", "popcorn", "pumpkin", "pyramid", "rainbow", "scooter", "shampoo", "silence",
+            "station", "stomach", "student", "sweater", "teacher", "theater", "thunder", "tornado", "tractor", "traffic",
+            "trumpet", "unicorn", "vacation", "village", "volcano", "weather", "wedding", "weekend", "whisper", "whistle"
+        ]
+    };
+
+    // --- State Variables ---
+    let currentLevel = 1;
+    let currentWord = "";
+    let validAnswers = []; // Stores all valid anagrams for current round
+    let attemptsLeft = INITIAL_LIVES;
+    let highScore = localStorage.getItem('jumble_highscore') || 0;
+
+    // --- DOM Elements ---
+    const els = {
+        level: document.getElementById('level-display'),
+        highScore: document.getElementById('high-score-display'),
+        scrambledWord: document.getElementById('scrambled-word'),
+        inputsContainer: document.getElementById('inputs-container'),
+        livesContainer: document.getElementById('lives-container'),
+        submitBtn: document.getElementById('submit-btn'),
+        clearBtn: document.getElementById('clear-btn'),
+        tryAgainBtn: document.getElementById('try-again-btn'), // Added for Android handling
+        errorMsg: document.getElementById('error-message'),
+        gameOverModal: document.getElementById('game-over-modal'),
+        finalScore: document.getElementById('final-score'),
+        finalBest: document.getElementById('final-best'),
+        correctAnswer: document.getElementById('correct-answer-display'),
+        toast: document.getElementById('toast'),
+        toastMsg: document.getElementById('toast-message'),
+        difficultyBadge: document.getElementById('difficulty-badge')
+    };
+
+    // --- Initialization ---
+    function init() {
+        els.highScore.textContent = highScore;
+        els.submitBtn.addEventListener('click', checkAnswer);
+        els.clearBtn.addEventListener('click', clearInputs);
+
+        // NEW: Android Ad Handler Listener
+        els.tryAgainBtn.addEventListener('click', restartWithAd);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') checkAnswer();
+        });
+        restartGame(); // Start first game
+    }
+
+    // --- Core Game Logic ---
+
+    // Expose restartGame globally for Android Native Interface
+    window.restartGame = function() {
+        currentLevel = 1;
+        attemptsLeft = INITIAL_LIVES;
+        els.gameOverModal.classList.add('hidden');
+        els.gameOverModal.classList.remove('flex');
+        updateStatsUI();
+        loadNewLevel();
+    };
+
+    function restartWithAd() {
+        if (window.Android && window.Android.showAd) {
+            window.Android.showAd();
+        } else {
+            console.warn("Android interface not available, running standard restart.");
+            window.restartGame();
+        }
+    }
+
+    function getWordForLevel(level) {
+        let baseTier = 1;
+        let label = "Easy";
+        let colorClass = "bg-blue-500/20 text-blue-300 border-blue-500/30";
+        let pool = WORDS_BY_TIER.tier1;
+
+        // Faster Pacing Logic (5 / 15 / 30)
+        if (level <= 5) baseTier = 1;
+        else if (level <= 15) baseTier = 2;
+        else if (level <= 30) baseTier = 3;
+        else baseTier = 4;
+
+        // Flow Modifiers
+        const isVictoryLap = (level % 5 === 0);
+        const isChallenge = (level > 3 && level % 5 === 4);
+
+        if (isVictoryLap) {
+            pool = WORDS_BY_TIER.tier1;
+            label = "Victory Lap!";
+            colorClass = "bg-yellow-500/20 text-yellow-300 border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.3)]";
+        } else if (isChallenge) {
+            let challengeTier = Math.min(4, baseTier + 1);
+            pool = WORDS_BY_TIER[`tier${challengeTier}`];
+            label = "Challenge!";
+            colorClass = "bg-red-500/20 text-red-300 border-red-500/30 animate-pulse";
+        } else {
+            pool = WORDS_BY_TIER[`tier${baseTier}`];
+            if (baseTier === 1) { label = "Warm Up"; colorClass = "bg-green-500/20 text-green-300 border-green-500/30"; }
+            else if (baseTier === 2) { label = "Medium"; colorClass = "bg-blue-500/20 text-blue-300 border-blue-500/30"; }
+            else if (baseTier === 3) { label = "Hard"; colorClass = "bg-purple-500/20 text-purple-300 border-purple-500/30"; }
+            else { label = "Expert"; colorClass = "bg-pink-500/20 text-pink-300 border-pink-500/30"; }
+        }
+
+        els.difficultyBadge.textContent = label;
+        els.difficultyBadge.className = `px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border transition-all duration-300 ${colorClass}`;
+
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    // Find all anagrams in the dictionary that match the current letters
+    function findAllValidAnagrams(word) {
+        const targetSorted = word.split('').sort().join('');
+        const found = [];
+
+        // Search all tiers to find any valid word with these letters
+        Object.values(WORDS_BY_TIER).forEach(tier => {
+            tier.forEach(w => {
+                if (w.length === word.length && w.split('').sort().join('') === targetSorted) {
+                    if(!found.includes(w)) found.push(w);
+                }
+            });
+        });
+        return found;
+    }
+
+    function loadNewLevel() {
+        attemptsLeft = INITIAL_LIVES;
+
+        // 1. Get a random word based on difficulty curve
+        currentWord = getWordForLevel(currentLevel);
+
+        // 2. Identify ALL valid anagrams for this word from our bank
+        validAnswers = findAllValidAnagrams(currentWord);
+
+        // Render UI
+        renderScrambledWord(currentWord);
+        createInputBoxes(currentWord.length);
+        renderLives();
+        updateStatsUI();
+
+        els.errorMsg.style.opacity = '0';
+    }
+
+    function shuffleWord(word) {
+        const arr = word.split('');
+        let shuffled;
+        // Ensure we don't return the original word if possible
+        let safety = 0;
+        do {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            shuffled = arr.join('');
+            safety++;
+        } while (shuffled === word && word.length > 1 && safety < 50);
+        return shuffled;
+    }
+
+    function renderScrambledWord(word) {
+        const scrambled = shuffleWord(word);
+        els.scrambledWord.textContent = scrambled;
+        els.scrambledWord.classList.remove('pop-in');
+        void els.scrambledWord.offsetWidth; // Trigger reflow
+        els.scrambledWord.classList.add('pop-in');
+    }
+
+    function createInputBoxes(length) {
+        els.inputsContainer.innerHTML = '';
+
+        for (let i = 0; i < length; i++) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.maxLength = 1;
+            input.className = 'letter-input w-10 h-12 sm:w-14 sm:h-16 text-2xl sm:text-3xl font-bold bg-gray-800 text-center rounded-xl border-2 border-gray-700 focus:outline-none uppercase';
+            input.dataset.index = i;
+
+            input.addEventListener('input', (e) => handleInput(e, i));
+            input.addEventListener('keydown', (e) => handleKeyDown(e, i));
+
+            els.inputsContainer.appendChild(input);
+        }
+
+        setTimeout(() => {
+            const first = els.inputsContainer.querySelector('input');
+            if (first) first.focus();
+        }, 100);
+    }
+
+    function handleInput(e, index) {
+        const input = e.target;
+        const val = input.value.toLowerCase();
+        const inputs = els.inputsContainer.querySelectorAll('input');
+
+        // 1. Validation: Ensure only letters
+        if (!/^[a-z]$/.test(val)) {
+            input.value = '';
+            return;
+        }
+
+        // 2. Validation: Ensure letter exists in the hidden word
+        // Note: Anagrams share the same letters, so checking against currentWord is safe for all variants
+        if (!currentWord.includes(val)) {
+            input.value = '';
+            input.classList.add('error');
+            showError(`'${val.toUpperCase()}' is not in the hidden word!`);
+            setTimeout(() => input.classList.remove('error'), 500);
+            return;
+        }
+
+        // 3. Validation: Frequency Check
+        const allowedCount = currentWord.split(val).length - 1;
+        let currentCount = 0;
+        inputs.forEach(inp => {
+            if (inp.value.toLowerCase() === val) currentCount++;
+        });
+
+        if (currentCount > allowedCount) {
+             input.value = '';
+             input.classList.add('error');
+             showError(`'${val.toUpperCase()}' appears only ${allowedCount} time${allowedCount !== 1 ? 's' : ''}!`);
+             setTimeout(() => input.classList.remove('error'), 500);
+             return;
+        }
+
+        // Visual filled state
+        input.classList.add('filled');
+
+        // Auto-focus next
+        if (val && index < inputs.length - 1) {
+            inputs[index + 1].focus();
+        }
+
+        els.errorMsg.style.opacity = '0';
+        inputs.forEach(inp => inp.classList.remove('error'));
+    }
+
+    function handleKeyDown(e, index) {
+        const inputs = els.inputsContainer.querySelectorAll('input');
+
+        if (e.key === 'Backspace') {
+            const currentInput = inputs[index];
+            if (currentInput.value === '') {
+                if (index > 0) {
+                    inputs[index - 1].focus();
+                    inputs[index - 1].value = '';
+                    inputs[index - 1].classList.remove('filled');
+                }
+            } else {
+                currentInput.value = '';
+                currentInput.classList.remove('filled');
+            }
+        } else if (e.key === 'ArrowLeft') {
+            if (index > 0) inputs[index - 1].focus();
+        } else if (e.key === 'ArrowRight') {
+            if (index < inputs.length - 1) inputs[index + 1].focus();
+        }
+    }
+
+    function clearInputs() {
+        const inputs = els.inputsContainer.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.value = '';
+            input.classList.remove('filled', 'error');
+        });
+        els.errorMsg.style.opacity = '0';
+        // Focus first input
+        if(inputs.length > 0) inputs[0].focus();
+    }
+
+    function checkAnswer() {
+        const inputs = Array.from(els.inputsContainer.querySelectorAll('input'));
+        const guess = inputs.map(input => input.value).join('').toLowerCase();
+
+        // 1. Validation: Check if all boxes filled
+        if (guess.length !== currentWord.length) {
+            showError("Please fill in all boxes!");
+            inputs.forEach(input => {
+                if (!input.value) input.classList.add('error');
+            });
+            return;
+        }
+
+        // 2. Logic: Correct or Incorrect (Check against ALL valid anagrams)
+        if (validAnswers.includes(guess)) {
+            handleSuccess(guess);
+        } else {
+            handleFailure(inputs);
+        }
+    }
+
+    function handleSuccess(correctGuess) {
+        showToast(`Awesome! It was ${correctGuess.toUpperCase()}`);
+
+        currentLevel++;
+        if (currentLevel > highScore) {
+            highScore = currentLevel;
+            localStorage.setItem('jumble_highscore', highScore);
+        }
+
+        setTimeout(() => {
+            loadNewLevel();
+        }, 1000);
+    }
+
+    function handleFailure(inputs) {
+        attemptsLeft--;
+        renderLives();
+
+        inputs.forEach(input => {
+            input.classList.add('error');
+            setTimeout(() => input.classList.remove('error'), 500);
+        });
+
+        if (attemptsLeft <= 0) {
+            triggerGameOver();
+        } else {
+            showError(`${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} remaining!`);
+        }
+    }
+
+    function triggerGameOver() {
+        els.finalScore.textContent = currentLevel;
+        els.finalBest.textContent = highScore;
+        // Show all valid options separated by slashes
+        els.correctAnswer.textContent = validAnswers.join(' / ');
+
+        els.gameOverModal.classList.remove('hidden');
+        els.gameOverModal.classList.add('flex');
+    }
+
+    // --- UI Updates ---
+
+    function updateStatsUI() {
+        els.level.textContent = currentLevel;
+        els.highScore.textContent = highScore;
+    }
+
+    function renderLives() {
+        els.livesContainer.innerHTML = '';
+        for (let i = 0; i < INITIAL_LIVES; i++) {
+            const heart = document.createElement('i');
+            if (i < attemptsLeft) {
+                heart.className = 'fas fa-heart text-red-500 text-xl pop-in';
+            } else {
+                heart.className = 'fas fa-heart-broken text-gray-600 text-xl';
+            }
+            els.livesContainer.appendChild(heart);
+        }
+    }
+
+    function showError(msg) {
+        els.errorMsg.textContent = msg;
+        els.errorMsg.style.opacity = '1';
+    }
+
+    function showToast(msg) {
+        els.toastMsg.textContent = msg;
+        els.toast.classList.remove('-translate-y-24');
+        els.toast.classList.add('translate-y-6');
+
+        setTimeout(() => {
+            els.toast.classList.add('-translate-y-24');
+            els.toast.classList.remove('translate-y-6');
+        }, 2000);
+    }
+
+    window.onload = init;
+
+</script>
+</body>
+
+</html>
